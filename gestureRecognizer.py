@@ -4,12 +4,30 @@ from mediapipe.tasks import python
 import cv2
 import numpy as np
 import threading
+import time
+
+import socket
+
 
 # source for threading: https://stackoverflow.com/questions/76320300/nameerror-name-mp-image-is-not-defined-with-mediapipe-gesture-recognition
 class GestureRecognizer:
-    def __init__(self):
+    def __init__(self, host, port):
         self.lock = threading.Lock()
         self.current_gestures = []
+        self.save_text_mode = False
+        self.current_letter = ""
+        self.start_time = None
+        self.saved_text = ""
+        self.words_list = []
+
+        self.server_host = host
+        self.server_port = port
+        
+        if self.server_host is not None and self.server_port is not None:
+            self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.client_socket.connect((self.server_host, self.server_port))
+
+        print("OK")
     
     def main(self):
         model_path = "gesture_recognizer.task"
@@ -40,21 +58,21 @@ class GestureRecognizer:
                 hands = mp_hands.Hands(
                         static_image_mode=False,
                         max_num_hands=2,
-                        min_detection_confidence=0.65,
-                        min_tracking_confidence=0.65
                     )
                 timestamp = 0
 
                 # Create a loop to read the latest frame from the camera using VideoCapture#read()
                 while cap.isOpened():
                     success, image = cap.read()
+                    h, w, c = image.shape
                     if not success:
                         print("Ignoring empty camera frame.")
                         # If loading a video, use 'break' instead of 'continue'.
                         continue
 
-                    # flip
+                    # Flip
                     image = cv2.flip(image, 1)
+                    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
                     # Convert the image to numpy.ndarray.
                     image_array = np.asarray(image)
@@ -65,6 +83,15 @@ class GestureRecognizer:
                     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
                     results = hands.process(image)
 
+                    # Display saved text on the bottom left part of the frame
+                    cv2.putText(image, f'Saved Text: {self.saved_text}', (50, 450), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+
+                    # display the words list on the top right part of the frame, one word per line
+                    y_pos = 50
+                    for word in self.words_list:
+                        cv2.putText(image, word, (400, y_pos), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                        y_pos += 50
+
                     if results.multi_hand_landmarks:
                         for hand_landmarks in results.multi_hand_landmarks:
                             mp_drawing.draw_landmarks(image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
@@ -73,16 +100,73 @@ class GestureRecognizer:
                             recognizer.recognize_async(mp_image, timestamp)
                             timestamp = timestamp + 1 # should be monotonically increasing, because in LIVE_STREAM mode
 
+                            x_max = 0
+                            y_max = 0
+                            x_min = w
+                            y_min = h
+                            for lm in hand_landmarks.landmark:
+                                x, y = int(lm.x * w), int(lm.y * h)
+                                if x > x_max:
+                                    x_max = x
+                                if x < x_min:
+                                    x_min = x
+                                if y > y_max:
+                                    y_max = y
+                                if y < y_min:
+                                    y_min = y
+                            y_min -= 0
+                            y_max += 0
+                            x_min -= 0
+                            x_max += 0
+                            # cv2.rectangle(image, (x_min, y_min), (x_max, y_max), (0, 255, 0), 2)
+
                         self.put_gestures(image)
 
                     cv2.imshow('MediaPipe Gesture Recognition', image)
-                    if cv2.waitKey(5) & 0xFF == 27:
+
+                    key = cv2.waitKey(5)
+                    if key == ord('c'):  # Press space to toggle between modes
+                        self.save_text_mode = not self.save_text_mode
+
+                        if self.save_text_mode: 
+                            self.saved_text = ""
+
+                        print("Save Text Mode:", self.save_text_mode)
+
+                    if key == ord(' '):
+                        # adds the saved text to the list of words
+                        self.words_list.append(self.saved_text)
+
+                        # sends the saved text to the server
+                        if self.server_host is not None and self.server_port is not None:
+                            self.client_socket.sendall(self.saved_text.encode())
+
+                        self.saved_text = ""
+
+                    if key == ord('q'):
                         break
+
         except Exception as e:
             print(e)
             raise
 
         cap.release()
+
+    def check_and_save_letter(self):
+        if self.current_letter and time.time() - self.start_time >= 1:
+            
+            if self.current_letter == "space":
+                self.saved_text += " "
+            elif self.current_letter == "del":
+                self.saved_text = self.saved_text[:-1]
+            else:
+                self.saved_text += self.current_letter
+
+            self.current_letter = ""
+            self.start_time = None
+
+    def get_current_text(self):
+        return self.saved_text
 
     def put_gestures(self, frame):
         self.lock.acquire()
@@ -91,16 +175,18 @@ class GestureRecognizer:
         y_pos = 50
 
         for hand_gesture_name in gestures:
-            # show the prediction on the frame
             cv2.putText(frame, hand_gesture_name, (50, y_pos), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
             y_pos += 50
 
-        """
-        if len(gestures)  == 1:
-            cv2.putText(frame, gestures[0], (50, y_pos), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-        if len(gestures)  == 2:
-            cv2.putText(frame, gestures[1], (50, y_pos + 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
-        """
+            if self.save_text_mode and hand_gesture_name.isalpha():
+                if not self.current_letter:
+                    self.current_letter = hand_gesture_name
+                    self.start_time = time.time()
+                elif self.current_letter != hand_gesture_name:
+                    self.current_letter = hand_gesture_name
+                    self.start_time = time.time()
+                else:
+                    self.check_and_save_letter()
 
     def save_result(self, result, output_image, timestamp_ms):
         #print(f'gesture recognition result: {result}')
@@ -113,8 +199,12 @@ class GestureRecognizer:
                 print(gesture_name)
                 self.current_gestures.append(gesture_name)
         self.lock.release()
-
+        
 
 if __name__ == '__main__':
-    gesture_recognizer = GestureRecognizer()
+    MY_IP = '127.0.0.1'
+    OTHER_IP = "127.0.0.1"
+    PORT = 5555
+
+    gesture_recognizer = GestureRecognizer(None, None)
     gesture_recognizer.main()
