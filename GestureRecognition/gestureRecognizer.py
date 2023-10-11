@@ -40,7 +40,7 @@ class GestureRecognizer:
         print("OK")
     
     def main(self):
-        model_path = "GestureRecognizer/gesture_recognizer.task"
+        model_path = "GestureRecognition/gesture_recognizer.task"
 
         # STEP 2: Create the task
         GestureRecognizer = mp.tasks.vision.GestureRecognizer

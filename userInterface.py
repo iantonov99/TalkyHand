@@ -4,10 +4,15 @@ import csv
 import cv2
 from PIL import Image, ImageTk
 import mediapipe as mp
-from GestureRecognizer.recognizer import GestureRecognizer
+from GestureRecognition.recognizer import GestureRecognizer
+
+"""
+from MotionRecognition.MotionRecognizer import MotionRecognizer
+from MotionRecognition.utils.mediapipe_utils import mediapipe_detection
+"""
 
 
-# ----------- DEFINE INTERFACE ----------- 
+# ----------- DEFINE INTERFACE ----------- #
 
 customtkinter.set_appearance_mode("Dark")  # Modes: "System" (standard), "Dark", "Light"
 customtkinter.set_default_color_theme("green")  # Themes: "blue" (standard), "green", "dark-blue"
@@ -38,7 +43,7 @@ class App(customtkinter.CTk):
         self.grid_rowconfigure(0, weight=0) 
         self.grid_rowconfigure(1, weight=1) 
 
-# ----------- CONTAINTER -----------  -> TO CHECK: whether to leave it or just structure more the grid withoud using a container
+# ----------- CONTAINTER ----------- # -> TO CHECK: whether to leave it or just structure more the grid withoud using a container
 
         self.container = customtkinter.CTkFrame(self, fg_color="#4287f5")
         self.container.grid(row=1, column=1, padx=20, pady=20, sticky="nsew")
@@ -56,7 +61,7 @@ class App(customtkinter.CTk):
         self.header = customtkinter.CTkLabel(self, text="TalkyHand - your ASL translator Companion", font=customtkinter.CTkFont(size=24, weight="bold"))
         self.header.grid(row=0, column=1, padx=20, pady=(20, 10), sticky="nw")
 
-# ----------- CHAT -----------  -> to do: fix the resize / the right message position / the scrolling
+# ----------- CHAT ----------- # -> to do: fix the resize / the right message position / the scrolling
 
         self.chatFrame = customtkinter.CTkFrame(self.container)
         self.chatFrame.grid(row=0, column=1, padx=20, pady=20, sticky="nsew")
@@ -89,7 +94,7 @@ class App(customtkinter.CTk):
         # self.scrollable_frame = customtkinter.CTkScrollableFrame(self, corner_radius=30)
         # self.scrollable_frame.grid(row=0, column=2, padx=20, pady=20, sticky="nsew")
         
-# ----------- CAMERA ----------- 
+# ----------- CAMERA ----------- #
 
         self.camera_canvas = tk.Canvas(self.container, width=600, height=600, bd=0, highlightthickness=0)
         self.camera_canvas.grid(row=0, column=0, padx=(20, 0), pady=20)
@@ -97,25 +102,86 @@ class App(customtkinter.CTk):
         # Start capturing and displaying the camera feed
         self.start_camera()
 
-# ----------- Action for the gesture recognition on the camera -----------
+# ----------- MODELS ----------- #
 
-   # Start capturing and displaying the camera feed
-
-    def start_camera(self):
-        cap = cv2.VideoCapture(0)
-
-        try:
-            gesture_recognizer = GestureRecognizer()
-        except Exception as e:
-            print(f"Failed to initialize gesture recognizer: {e}")
-            return
-
-        mp_drawing = mp.solutions.drawing_utils
-        mp_hands = mp.solutions.hands
-        hands = mp_hands.Hands(
+        # setup the gesture recognizer
+        self.gesture_recognizer = GestureRecognizer()
+        self.mp_drawing = mp.solutions.drawing_utils
+        self.mp_hands = mp.solutions.hands
+        self.hands = self.mp_hands.Hands(
                 static_image_mode=False,
                 max_num_hands=2,
             )
+
+        # TODO: setup the motion recognizer
+        # self.motion_recognizer = MotionRecognizer()
+
+        self.current_message = ""
+
+    def perform_gesture_recognition(self, frame_rgb):
+        # Process the frame
+        results = self.hands.process(frame_rgb)
+
+        # Draw text on the frame
+        cv2.putText(frame_rgb, f'Current word: {self.gesture_recognizer.get_current_text()}_', (80, 450), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+
+        if results.multi_hand_landmarks:
+            # Recognize the gesture
+            try:
+                self.gesture_recognizer.recognize(frame_rgb, results)
+            except Exception as e:
+                print(f"Failed to recognize gesture: {e}")
+
+            for hand_landmarks in results.multi_hand_landmarks:
+                self.mp_drawing.draw_landmarks(
+                    frame_rgb, 
+                    hand_landmarks, 
+                    self.mp_hands.HAND_CONNECTIONS, 
+                    self.mp_drawing.DrawingSpec(color=(144,238,144), thickness=2, circle_radius=2), 
+                )
+
+                # Track hand position
+                self.track_hand_position(hand_landmarks)
+
+            cv2.putText(frame_rgb, f'Recognized: {self.gesture_recognizer.get_current_gesture()}', (80, 400), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+        else:
+            cv2.putText(frame_rgb, f'Recognized: None', (80, 400), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+
+
+    def track_hand_position(self, hand_landmarks):
+        top_left = (0.3, 0.3)
+        top_center = (0.4, 0.3)
+        top_right = (0.7, 0.2)
+        bottom_right = (0.7, 0.7)
+
+        if hand_landmarks.landmark[8].x < top_left[0] and hand_landmarks.landmark[8].y < top_left[1]:
+            print("TOP LEFT")
+            # accept the first suggestion
+            if len(self.suggestions) > 0:
+                print("ADDING SUGGESTION" + self.suggestions[0][0])
+                self.current_message = self.current_message + self.suggestions[0][0] + " "
+                self.gesture_recognizer.reset_text()
+                self.suggestions = []
+        elif hand_landmarks.landmark[8].y < top_center[1] and hand_landmarks.landmark[8].x > top_center[0] and hand_landmarks.landmark[8].x < 1 - top_center[0]:
+            print("TOP CENTER")
+            # accept the second suggestion
+            if len(self.suggestions) > 1:
+                self.current_message = self.current_message + self.suggestions[1][0] + " "
+                self.gesture_recognizer.reset_text()
+                self.suggestions = []
+        elif hand_landmarks.landmark[8].x > top_right[0] and hand_landmarks.landmark[8].y < top_right[1]:
+            print("TOP RIGHT")
+            # accept the third suggestion
+            if len(self.suggestions) > 2:
+                self.current_message = self.current_message + self.suggestions[2][0] + " "
+                self.gesture_recognizer.reset_text()
+                self.suggestions = []
+        elif hand_landmarks.landmark[8].x > bottom_right[0] and hand_landmarks.landmark[8].y > bottom_right[1]:
+            print("BOTTOM RIGHT")
+
+
+    def start_camera(self):
+        cap = cv2.VideoCapture(0)
 
         def update_camera():
             _, frame = cap.read()
@@ -123,23 +189,24 @@ class App(customtkinter.CTk):
                 # Avoid mirroring the camera feed
                 frame_rgb = cv2.cvtColor(cv2.flip(frame, 1), cv2.COLOR_BGR2RGB)
 
-                # Process the frame
-                results = hands.process(frame_rgb)
-                gesture_recognizer.recognize(frame_rgb)
+                # Perform gesture recognition
+                try:
+                    self.perform_gesture_recognition(frame_rgb)
+                except Exception as e:
+                    print(f"Failed to setup gesture recognizer: {e}")
 
-                # Draw text on the frame
-                cv2.putText(frame_rgb, f'Current word: {gesture_recognizer.get_current_text()}', (80, 450), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-                self.predictCompletion(gesture_recognizer.get_current_text()[:-1], frame_rgb)
+                # if the text contains a space, then it is a word to be added to the list
+                if " " in self.gesture_recognizer.get_current_text():
+                    self.current_message += self.gesture_recognizer.get_current_text()
+                    self.gesture_recognizer.reset_text()
 
-                if results.multi_hand_landmarks:
-                    for hand_landmarks in results.multi_hand_landmarks:
-                        mp_drawing.draw_landmarks(frame_rgb, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+                print(self.current_message)
 
-                        # Draw the current gesture on the frame
-                    cv2.putText(frame_rgb, f'Recognized: {gesture_recognizer.get_current_gesture()}', (80, 400), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-                else:
-                    # Draw text on the frame
-                    cv2.putText(frame_rgb, f'Recognized: None', (80, 400), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                # auto complete
+                try:
+                    self.predictCompletion(self.gesture_recognizer.get_current_text(), frame_rgb)
+                except Exception as e:
+                    print(f"Error in autocompletion: {e}")
 
                 # Calculate dimensions to fit the frame within the square canvas
                 canvas_size = self.camera_canvas.winfo_width()
@@ -173,31 +240,32 @@ class App(customtkinter.CTk):
     
     def predictCompletion(self, substring, frame_rgb):
         if len(substring) > 1:
-            suggestions = [
+            self.suggestions = [
                 word
                 for word in self.words
                 if word[0].lower().startswith(substring.lower()) and word[0].lower() != substring.lower()
             ]
 
-            final_suggestions = suggestions[:3]
-            if len(final_suggestions) > 0:
-                cv2.putText(frame_rgb, final_suggestions[0][0], (100, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
-            if len(final_suggestions) >= 1:
-                cv2.putText(frame_rgb, str(final_suggestions[1][0]), (250, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
-            if len(final_suggestions) >= 2:
-                cv2.putText(frame_rgb, str(final_suggestions[2][0]), (400, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+            if len(self.suggestions) > 0:
+                cv2.putText(frame_rgb, self.suggestions[0][0], (100, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+            if len(self.suggestions) >= 1:
+                cv2.putText(frame_rgb, str(self.suggestions[1][0]), (250, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+            if len(self.suggestions) >= 2:
+                cv2.putText(frame_rgb, str(self.suggestions[2][0]), (400, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
             
             
-# ----------- LOAD APP ----------- 
+# ----------- LOAD APP ----------- #
 
 if __name__ == "__main__":
+    try:
+        app = App()
+        #loading file with words for prediction on finishing a word
+        file = open('unigram_freq.csv')
+        type(file)
+        csvreader = csv.reader(file)
+        for row in csvreader:
+            app.words.append(row)
 
-    app = App()
-    #loading file with words for prediction on finishing a word
-    file = open('unigram_freq.csv')
-    type(file)
-    csvreader = csv.reader(file)
-    for row in csvreader:
-        app.words.append(row)
-    
-    app.mainloop()
+        app.mainloop()
+    except Exception as e:
+        print(f"Failed to run app: {e}")
