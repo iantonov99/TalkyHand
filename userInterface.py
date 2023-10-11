@@ -80,10 +80,6 @@ class App(customtkinter.CTk):
                 results = hands.process(frame_rgb)
                 gesture_recognizer.recognize(frame_rgb)
 
-
-
-                cv2.putText(frame_rgb, f'Recognized: {gesture_recognizer.get_current_gesture()}', (80, 400), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-
                 # Draw text on the frame
                 cv2.putText(frame_rgb, f'Current word: {gesture_recognizer.get_current_text()}', (80, 450), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
@@ -91,6 +87,11 @@ class App(customtkinter.CTk):
                     for hand_landmarks in results.multi_hand_landmarks:
                         mp_drawing.draw_landmarks(frame_rgb, hand_landmarks, mp_hands.HAND_CONNECTIONS)
 
+                        # Draw the current gesture on the frame
+                    cv2.putText(frame_rgb, f'Recognized: {gesture_recognizer.get_current_gesture()}', (80, 400), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                else:
+                    # Draw text on the frame
+                    cv2.putText(frame_rgb, f'Recognized: None', (80, 400), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
                 # Calculate dimensions to fit the frame within the square canvas
                 canvas_size = self.camera_canvas.winfo_width()
