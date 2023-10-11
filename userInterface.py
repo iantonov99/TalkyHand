@@ -3,10 +3,11 @@ import customtkinter
 import csv
 import cv2
 from PIL import Image, ImageTk
-
 import mediapipe as mp
-
 from GestureRecognizer.recognizer import GestureRecognizer
+
+
+# ----------- DEFINE INTERFACE ----------- 
 
 customtkinter.set_appearance_mode("Dark")  # Modes: "System" (standard), "Dark", "Light"
 customtkinter.set_default_color_theme("green")  # Themes: "blue" (standard), "green", "dark-blue"
@@ -15,9 +16,9 @@ class App(customtkinter.CTk):
     def __init__(self):
         super().__init__()
 
-        #words for prediction
+        # Words for prediction
         self.words = []
-        # configure window
+        # Configure window
         self.title("TalkyHand")
 
         # Get screen width and height
@@ -31,31 +32,34 @@ class App(customtkinter.CTk):
         # Display window in th
         self.geometry(f"1200x800+{x}+{y}")
 
-        # configure grid layout
+        # Configure grid layout
         self.grid_columnconfigure(0, weight=0)  # Change weight to 0 to prevent the sidebar from expanding
-        self.grid_columnconfigure(1, weight=1)  # Allow the camera box to expand
-        self.grid_columnconfigure(2, weight=1)  # Allow the scrollable frame to expand
-        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(1, weight=1)  # Grid for the main container
+        self.grid_rowconfigure(0, weight=0) 
+        self.grid_rowconfigure(1, weight=1) 
 
-        # HEADER 
-        self.header = customtkinter.CTkLabel(self, text="TalkyHand - your ASL translator Companion", font=customtkinter.CTkFont(size=24, weight="bold"))
-        self.header.place(relx=0, rely=0, relwidth=0.7, relheight=0.1)
-        
-        # Sidebar
+# ----------- CONTAINTER -----------  -> TO CHECK: whether to leave it or just structure more the grid withoud using a container
+
+        self.container = customtkinter.CTkFrame(self, fg_color="#4287f5")
+        self.container.grid(row=1, column=1, padx=20, pady=20, sticky="nsew")
+        self.container.grid_rowconfigure(0, weight=1)  
+        self.container.grid_columnconfigure(0, weight=1) 
+        self.container.grid_columnconfigure(1, weight=1)   
+  
+        # SIDEBAR - navigation
         self.sidebar_frame = customtkinter.CTkFrame(self, width=250, corner_radius=0)
-        self.sidebar_frame.grid(row=0, column=0, sticky="nsew")
-        self.sidebar_frame.grid_rowconfigure(4, weight=1)
+        self.sidebar_frame.grid(row=0, column=0, rowspan=2, sticky="nsew")
         self.logo_label = customtkinter.CTkLabel(self.sidebar_frame, text="TalkyHand", font=customtkinter.CTkFont(size=20, weight="bold"))
         self.logo_label.grid(row=0, column=0, padx=20, pady=(20, 10))
 
-        # create a canvas to display the camera feed as a square inside a larger canvas
-        canvas_size = 600
-        self.camera_canvas = tk.Canvas(self, width=canvas_size, height=canvas_size, bd=0, highlightthickness=0)
-        self.camera_canvas.grid(row=0, column=1, padx=(20, 0), pady=20)
+        # HEADER 
+        self.header = customtkinter.CTkLabel(self, text="TalkyHand - your ASL translator Companion", font=customtkinter.CTkFont(size=24, weight="bold"))
+        self.header.grid(row=0, column=1, padx=20, pady=(20, 10), sticky="nw")
 
-        # ----------- CHAT  ---------------- #    -> to do: fix the resize / the right message position / the scrolling
-        self.chatFrame = customtkinter.CTkFrame(self)
-        self.chatFrame.grid(row=0, column=2, padx=20, pady=20, sticky="nsew")
+# ----------- CHAT -----------  -> to do: fix the resize / the right message position / the scrolling
+
+        self.chatFrame = customtkinter.CTkFrame(self.container)
+        self.chatFrame.grid(row=0, column=1, padx=20, pady=20, sticky="nsew")
         self.chatFrame.grid_rowconfigure(0, weight=1)  # Allow row 0 (for the chat content) to expand
         self.chatFrame.grid_columnconfigure(0, weight=1)  # Allow column 0 to expand
 
@@ -72,23 +76,30 @@ class App(customtkinter.CTk):
             label_speaker.grid(row=len(self.chat.grid_slaves()) + 1, column=2, padx=10, pady=10, sticky="nsew")
             self.chat.update()
 
-        button1 = customtkinter.CTkButton(self, text="CTkButton", command=gesturer_bt)
-        button2 = customtkinter.CTkButton(self, text="CTkButton", command=speaker_bt)
+        # Remember to edit the buttons 
+        button1 = customtkinter.CTkButton(self.chatFrame, text="CTkButton", command=gesturer_bt)
+        button2 = customtkinter.CTkButton(self.chatFrame, text="CTkButton", command=speaker_bt)
         button1.grid(row=2, column=0, padx=20, pady=10)
         button2.grid(row=3, column=0, padx=20, pady=10)
 
         self.entry = customtkinter.CTkEntry(self.chatFrame, placeholder_text="Text here")
         self.entry.grid(row=1, sticky="nsew")
-        
-# --------------------------- #
-
 
         # create scrollable frame
- #     self.scrollable_frame = customtkinter.CTkScrollableFrame(self, corner_radius=30)
-#      self.scrollable_frame.grid(row=0, column=2, padx=20, pady=20, sticky="nsew")
+        # self.scrollable_frame = customtkinter.CTkScrollableFrame(self, corner_radius=30)
+        # self.scrollable_frame.grid(row=0, column=2, padx=20, pady=20, sticky="nsew")
+        
+# ----------- CAMERA ----------- 
+
+        self.camera_canvas = tk.Canvas(self.container, width=600, height=600, bd=0, highlightthickness=0)
+        self.camera_canvas.grid(row=0, column=0, padx=(20, 0), pady=20)
 
         # Start capturing and displaying the camera feed
         self.start_camera()
+
+# ----------- Action for the gesture recognition on the camera -----------
+
+   # Start capturing and displaying the camera feed
 
     def start_camera(self):
         cap = cv2.VideoCapture(0)
@@ -176,6 +187,8 @@ class App(customtkinter.CTk):
             if len(final_suggestions) >= 2:
                 cv2.putText(frame_rgb, str(final_suggestions[2][0]), (400, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
             
+            
+# ----------- LOAD APP ----------- 
 
 if __name__ == "__main__":
 
