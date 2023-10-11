@@ -17,7 +17,7 @@ class ChatReceiver:
 
     def receive_messages(self):
         print("LISTENING:")
-        while True:
+        while True: 
             try:
                 data = self.client_socket.recv(1024)
                 if not data:
@@ -36,4 +36,4 @@ class ChatReceiver:
 
 if __name__ == "__main__":
     # Create a ChatReceiver object
-    receiver = ChatReceiver('127.0.0.1', 5555)
+    receiver = ChatReceiver('0.0.0.0', 5555)

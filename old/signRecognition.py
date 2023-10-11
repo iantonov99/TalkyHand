@@ -1,4 +1,3 @@
-# pip install opencv-python, pip install mediapipe
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 import tensorflow as tf
@@ -14,16 +13,20 @@ model = load_model('smnist.h5')
 mphands = mp.solutions.hands
 hands = mphands.Hands()
 mp_drawing = mp.solutions.drawing_utils
-
 cap = cv2.VideoCapture(0)
+
 _, frame = cap.read()
+
 h, w, c = frame.shape
 
+img_counter = 0
 analysisframe = ''
 letterpred = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y']
-
 while True:
     _, frame = cap.read()
+
+    # flip the image
+    frame = cv2.flip(frame, 1)
 
     k = cv2.waitKey(1)
     if k%256 == 27:
@@ -54,10 +57,20 @@ while True:
                         y_max = y
                     if y < y_min:
                         y_min = y
-                y_min -= 20
-                y_max += 20
-                x_min -= 20
-                x_max += 20 
+                y_min -= 70
+                y_max += 70
+                x_min -= 70
+                x_max += 70 
+
+        # check borders of the frame
+        if x_min < 0:
+            x_min = 0
+        if y_min < 0:
+            y_min = 0
+        if x_max > w:
+            x_max = w
+        if y_max > h:
+            y_max = h
 
         analysisframe = cv2.cvtColor(analysisframe, cv2.COLOR_BGR2GRAY)
         analysisframe = analysisframe[y_min:y_max, x_min:x_max]
@@ -97,7 +110,15 @@ while True:
             elif value==high3:
                 print("Predicted Character 3: ", key)
                 print('Confidence 3: ', 100*value)
-        time.sleep(5)
+
+        # display the most likely letter
+        if high1 > 0.9:
+            letter_prediction_dict = {letterpred[i]: predarray[i] for i in range(len(letterpred))}
+            letter_prediction_dict = sorted(letter_prediction_dict.items(), key=lambda x: x[1], reverse=True)
+            print(letter_prediction_dict[0][0])
+            cv2.putText(frame, letter_prediction_dict[0][0], (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 255), 2)
+        else:
+            cv2.putText(frame, "None", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 0, 255), 2)
 
     framergb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     result = hands.process(framergb)
@@ -118,12 +139,11 @@ while True:
                     y_max = y
                 if y < y_min:
                     y_min = y
-            y_min -= 20
-            y_max += 20
-            x_min -= 20
-            x_max += 20
+            y_min -= 70
+            y_max += 70
+            x_min -= 70
+            x_max += 70
             cv2.rectangle(frame, (x_min, y_min), (x_max, y_max), (0, 255, 0), 2)
-            mp_drawing.draw_landmarks(frame, handLMs, mphands.HAND_CONNECTIONS)
     cv2.imshow("Frame", frame)
 
 cap.release()

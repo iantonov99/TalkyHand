@@ -20,17 +20,27 @@ class GestureRecognizer:
         self.saved_text = ""
         self.words_list = []
 
+        self.cap = cv2.VideoCapture(0)
+
+        self.CONFIDENCE_THRESHOLD = 0.90
+
         self.server_host = host
         self.server_port = port
         
         if self.server_host is not None and self.server_port is not None:
-            self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.client_socket.connect((self.server_host, self.server_port))
+            try:
+                self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.client_socket.connect((self.server_host, self.server_port))
+            except Exception as e:
+                print("Error connecting to server:", e)
+                self.client_socket = None
+        else:
+            self.client_socket = None
 
         print("OK")
     
     def main(self):
-        model_path = "gesture_recognizer.task"
+        model_path = "GestureRecognizer/gesture_recognizer.task"
 
         # STEP 2: Create the task
         GestureRecognizer = mp.tasks.vision.GestureRecognizer
@@ -46,7 +56,6 @@ class GestureRecognizer:
         )
             
         # STEP 4: Use OpenCV’s VideoCapture to start capturing from the webcam.
-        cap = cv2.VideoCapture(0)
         try:
             with GestureRecognizer.create_from_options(options) as recognizer:
                 # The detector is initialized. Use it here.
@@ -62,8 +71,8 @@ class GestureRecognizer:
                 timestamp = 0
 
                 # Create a loop to read the latest frame from the camera using VideoCapture#read()
-                while cap.isOpened():
-                    success, image = cap.read()
+                while self.cap.isOpened():
+                    success, image = self.cap.read()
                     h, w, c = image.shape
                     if not success:
                         print("Ignoring empty camera frame.")
@@ -138,7 +147,7 @@ class GestureRecognizer:
                         self.words_list.append(self.saved_text)
 
                         # sends the saved text to the server
-                        if self.server_host is not None and self.server_port is not None:
+                        if self.client_socket is not None:
                             self.client_socket.sendall(self.saved_text.encode())
 
                         self.saved_text = ""
@@ -150,7 +159,7 @@ class GestureRecognizer:
             print(e)
             raise
 
-        cap.release()
+        self.cap.release()
 
     def check_and_save_letter(self):
         if self.current_letter and time.time() - self.start_time >= 1:
@@ -174,8 +183,9 @@ class GestureRecognizer:
         self.lock.release()
         y_pos = 50
 
-        for hand_gesture_name in gestures:
+        for hand_gesture_name, hand_gesture_score in gestures:
             cv2.putText(frame, hand_gesture_name, (50, y_pos), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+            cv2.putText(frame, f'{hand_gesture_score:.2f}', (250, y_pos), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
             y_pos += 50
 
             if self.save_text_mode and hand_gesture_name.isalpha():
@@ -193,18 +203,27 @@ class GestureRecognizer:
         self.lock.acquire() # solves potential concurrency issues
         self.current_gestures = []
         if result is not None and any(result.gestures):
+            # add the gesture only if it is recognized with at least 85% confidence
             print("Recognized gestures:")
             for single_hand_gesture_data in result.gestures:
-                gesture_name = single_hand_gesture_data[0].category_name
-                print(gesture_name)
-                self.current_gestures.append(gesture_name)
+                if single_hand_gesture_data[0].score > self.CONFIDENCE_THRESHOLD:
+                    gesture_name = single_hand_gesture_data[0].category_name, single_hand_gesture_data[0].score
+                    print(gesture_name)
+                    self.current_gestures.append(gesture_name)
+                else:
+                    print("Gesture not recognized with enough confidence.")
+                    gesture_name = "unknown", 1 - single_hand_gesture_data[0].score
+                    self.current_gestures.append(gesture_name)
         self.lock.release()
         
 
 if __name__ == '__main__':
     MY_IP = '127.0.0.1'
-    OTHER_IP = "127.0.0.1"
+    OTHER_IP = '192.168.126.52'
     PORT = 5555
 
-    gesture_recognizer = GestureRecognizer(None, None)
-    gesture_recognizer.main()
+    try:
+        gesture_recognizer = GestureRecognizer(OTHER_IP, PORT)
+        gesture_recognizer.main()
+    except Exception as e:
+        print(f"Failed to initialize gesture recognizer: {e}")

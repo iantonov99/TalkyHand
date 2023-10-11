@@ -3,6 +3,10 @@ import customtkinter
 import cv2
 from PIL import Image, ImageTk
 
+import mediapipe as mp
+
+from GestureRecognizer.recognizer import GestureRecognizer
+
 customtkinter.set_appearance_mode("Dark")  # Modes: "System" (standard), "Dark", "Light"
 customtkinter.set_default_color_theme("green")  # Themes: "blue" (standard), "green", "dark-blue"
 
@@ -53,11 +57,40 @@ class App(customtkinter.CTk):
     def start_camera(self):
         cap = cv2.VideoCapture(0)
 
+        try:
+            gesture_recognizer = GestureRecognizer()
+        except Exception as e:
+            print(f"Failed to initialize gesture recognizer: {e}")
+            return
+
+        mp_drawing = mp.solutions.drawing_utils
+        mp_hands = mp.solutions.hands
+        hands = mp_hands.Hands(
+                static_image_mode=False,
+                max_num_hands=2,
+            )
+
         def update_camera():
             _, frame = cap.read()
             if frame is not None:
                 # Avoid mirroring the camera feed
                 frame_rgb = cv2.cvtColor(cv2.flip(frame, 1), cv2.COLOR_BGR2RGB)
+
+                # Process the frame
+                results = hands.process(frame_rgb)
+                gesture_recognizer.recognize(frame_rgb)
+
+
+
+                cv2.putText(frame_rgb, f'Recognized: {gesture_recognizer.get_current_gesture()}', (80, 400), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+
+                # Draw text on the frame
+                cv2.putText(frame_rgb, f'Current word: {gesture_recognizer.get_current_text()}', (80, 450), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+
+                if results.multi_hand_landmarks:
+                    for hand_landmarks in results.multi_hand_landmarks:
+                        mp_drawing.draw_landmarks(frame_rgb, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+
 
                 # Calculate dimensions to fit the frame within the square canvas
                 canvas_size = self.camera_canvas.winfo_width()
