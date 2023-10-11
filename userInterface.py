@@ -1,5 +1,6 @@
 import tkinter as tk
 import customtkinter
+import csv
 import cv2
 from PIL import Image, ImageTk
 
@@ -14,6 +15,8 @@ class App(customtkinter.CTk):
     def __init__(self):
         super().__init__()
 
+        #words for prediction
+        self.words = []
         # configure window
         self.title("TalkyHand")
         self.geometry("1100x600")  # Fixed geometry
@@ -82,6 +85,7 @@ class App(customtkinter.CTk):
 
                 # Draw text on the frame
                 cv2.putText(frame_rgb, f'Current word: {gesture_recognizer.get_current_text()}', (80, 450), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                self.predictCompletion(gesture_recognizer.get_current_text()[:-1], frame_rgb)
 
                 if results.multi_hand_landmarks:
                     for hand_landmarks in results.multi_hand_landmarks:
@@ -119,7 +123,32 @@ class App(customtkinter.CTk):
 
         # Start the camera update loop
         update_camera()
+    
+    def predictCompletion(self, substring, frame_rgb):
+        if len(substring) > 1:
+            suggestions = [
+                word
+                for word in self.words
+                if word[0].lower().startswith(substring.lower()) and word[0].lower() != substring.lower()
+            ]
+
+            final_suggestions = suggestions[:3]
+            if len(final_suggestions) > 0:
+                cv2.putText(frame_rgb, final_suggestions[0][0], (100, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+            if len(final_suggestions) >= 1:
+                cv2.putText(frame_rgb, str(final_suggestions[1][0]), (250, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+            if len(final_suggestions) >= 2:
+                cv2.putText(frame_rgb, str(final_suggestions[2][0]), (400, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+            
 
 if __name__ == "__main__":
+
     app = App()
+    #loading file with words for prediction on finishing a word
+    file = open('unigram_freq.csv')
+    type(file)
+    csvreader = csv.reader(file)
+    for row in csvreader:
+        app.words.append(row)
+    
     app.mainloop()
