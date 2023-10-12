@@ -99,9 +99,6 @@ class App(customtkinter.CTk):
         self.camera_canvas = tk.Canvas(self.container, width=600, height=600, bd=0, highlightthickness=0)
         self.camera_canvas.grid(row=0, column=0, padx=(20, 0), pady=20)
 
-        # Start capturing and displaying the camera feed
-        self.start_camera()
-
 # ----------- MODELS ----------- #
 
         # setup the gesture recognizer
@@ -117,6 +114,9 @@ class App(customtkinter.CTk):
         # self.motion_recognizer = MotionRecognizer()
 
         self.current_message = ""
+
+        # Start capturing and displaying the camera feed
+        self.start_camera()
 
     def perform_gesture_recognition(self, frame_rgb):
         # Process the frame
