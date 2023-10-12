@@ -10,6 +10,9 @@ from GestureRecognition.recognizer import GestureRecognizer
 from MotionRecognition.MotionRecognizer import MotionRecognizer
 from MotionRecognition.utils.mediapipe_utils import mediapipe_detection
 """
+from vosk import Model, KaldiRecognizer
+import pyaudio
+import threading
 
 
 # ----------- DEFINE INTERFACE ----------- #
@@ -25,6 +28,14 @@ class App(customtkinter.CTk):
         self.words = []
         # Configure window
         self.title("TalkyHand")
+        self.photoVoice = tk.PhotoImage(file = r"voice_recognition.png")
+        self.photoSign = tk.PhotoImage(file = r"sign_recognition.png")
+
+        #threat for speech recognition detection
+        self.appMode = True # True - sign recognition, False - speech recognition
+        self.event = threading.Event()
+        self.secondary_thread = self.create_thread()
+        self.secondary_thread.daemon = True  # Allow the thread to exit when the main program ends
 
         # Get screen width and height
         screen_width = self.winfo_screenwidth()
@@ -81,11 +92,24 @@ class App(customtkinter.CTk):
             label_speaker.grid(row=len(self.chat.grid_slaves()) + 1, column=2, padx=10, pady=10, sticky="nsew")
             self.chat.update()
 
+        def changeMode():
+            if self.appMode == True:
+              self.event.clear()
+              self.secondary_thread = self.create_thread()
+              self.secondary_thread.daemon = True  # Allow the thread to exit when the main program ends
+              self.secondary_thread.start()
+              self.appMode = False
+              changeAppModeBtn.configure(image=self.photoVoice)
+            else:
+              if self.event.is_set() == False:
+                self.event.set()
+              self.appMode = True
+              changeAppModeBtn.configure(image=self.photoSign)
+              
+
         # Remember to edit the buttons 
-        button1 = customtkinter.CTkButton(self.chatFrame, text="CTkButton", command=gesturer_bt)
-        button2 = customtkinter.CTkButton(self.chatFrame, text="CTkButton", command=speaker_bt)
-        button1.grid(row=2, column=0, padx=20, pady=10)
-        button2.grid(row=3, column=0, padx=20, pady=10)
+        changeAppModeBtn = customtkinter.CTkButton(self.chatFrame, text="Change mode", image=self.photoSign, command=changeMode)
+        changeAppModeBtn.grid(row=2, column=0, padx=20, pady=10)
 
         self.entry = customtkinter.CTkEntry(self.chatFrame, placeholder_text="Text here")
         self.entry.grid(row=1, sticky="nsew")
@@ -200,7 +224,7 @@ class App(customtkinter.CTk):
                     self.current_message += self.gesture_recognizer.get_current_text()
                     self.gesture_recognizer.reset_text()
 
-                print(self.current_message)
+                #print(self.current_message)
 
                 # auto complete
                 try:
@@ -252,9 +276,111 @@ class App(customtkinter.CTk):
                 cv2.putText(frame_rgb, str(self.suggestions[1][0]), (250, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
             if len(self.suggestions) >= 2:
                 cv2.putText(frame_rgb, str(self.suggestions[2][0]), (400, 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+
+    #methods for connecting the speech to text with the UI
+    def writeToInput(self, text):
+       self.entry.insert('end', text)
+    def removeInput(self):
+       self.entry.delete(0, 'end')
+
+    def shouldStopThread(self):
+      return self.event.is_set()
+
+    def addToChat(self, textToAdd):
+      label = customtkinter.CTkLabel(self.chat, wraplength=250, fg_color="#35999c", corner_radius=20, text=textToAdd)
+      label.grid(row=len(self.chat.grid_slaves()) + 1, column=1, padx=10, pady=10, sticky="nsew")
+      self.chat.update()
+
+    def create_thread(self):
+	    return threading.Thread(target=speech_recognition, args=(self.event,))
+    
+
+def writeToEntry(text):
+   app.writeToInput(text)
+
+def deleteInput():
+   app.removeInput()
+
+def sendToChat(text):
+   app.addToChat(text)
+
+class SpeechListener:
+  def __init__(self):
+    self.stop_listening = None
+    self.shouldWriteToChat = False
+    self.message = ""
+    self.mode = 0
+
+  def writeToInput(self, text):
+    if self.mode != 0 and text != "speech time":
+      match self.mode:
+        case 1:
+          if self.message != "":
+            self.message = self.message + " "
+            writeToEntry(" ")
+          self.message = self.message + text
+          writeToEntry(text)
+          print(self.message)
+        case 2:
+          if "with" in text:
+            wordInSentence = text.split('with', 1)[0].strip()
+            replaceString = text.split('with', 1)[1].strip()
+            self.message = self.message.replace(wordInSentence, replaceString)
+            print(self.message)
+            deleteInput()
+            writeToEntry(self.message)
+        case 3:
+          self.message = self.message.replace(text, '')
+          print(self.message)
+          deleteInput()
+          writeToEntry(self.message)
+
+  def commands(self, text):
+   match text:
+    case "send to chat"|"sent to chat"|"sent to check":
+      sendToChat(self.message)
+      deleteInput()
+      self.message = ""
+    case "continue":
+      self.mode = 1
+    case "replace":
+      self.mode = 2
+    case "remove":
+      self.mode = 3
+    case "again":
+      deleteInput()
+      self.message = ""
+    case _:
+      print("unknown command.")     
+# ----------- LOAD APP ----------- 
+
+
+def speech_recognition(event):
+    stream = mic.open(format=pyaudio.paInt16, channels=1, rate=16000, input=True, frames_per_buffer=8192)
+    stream.start_stream()
+    while True:
+        if app.shouldStopThread() == True:
+          break
+        
+        data = stream.read(4096)
+
+        if recognizer.AcceptWaveform(data):
+            text = recognizer.Result()
+            text = text[14:-3]
+            print(text)
+            if text == "goodbye":
+                speechListener.mode = 0
+            if text == "speech time":
+                speechListener.mode = 1
             
-            
-# ----------- LOAD APP ----------- #
+            if text in ["send to chat","sent to chat","sent to check", "continue", "replace", "remove", "again"]:
+                speechListener.commands(text)
+            else:
+                speechListener.writeToInput(text)
+    stream.stop_stream()
+
+# Create a separate thread for the secondary loop
+
 
 if __name__ == "__main__":
     try:
@@ -265,6 +391,13 @@ if __name__ == "__main__":
         csvreader = csv.reader(file)
         for row in csvreader:
             app.words.append(row)
+
+        speechListener = SpeechListener()
+        model = Model(r"D:\\UPS\AdvUI\TalkyHand\TalkyHand\vosk-model-small-en-us-0.15\vosk-model-small-en-us-0.15")
+
+        recognizer = KaldiRecognizer(model, 16000) 
+
+        mic = pyaudio.PyAudio()
 
         app.mainloop()
     except Exception as e:
