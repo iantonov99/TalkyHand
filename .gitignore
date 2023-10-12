@@ -154,8 +154,6 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
-#vosk folder
-.vosk-model-small-en-us-0.15
 
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
@@ -163,3 +161,18 @@ cython_debug/
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
+#vosk folder
+vosk-model-small-en-us-0.15/vosk-model-small-en-us-0.15/README
+vosk-model-small-en-us-0.15/vosk-model-small-en-us-0.15/am/final.mdl
+vosk-model-small-en-us-0.15/vosk-model-small-en-us-0.15/conf/mfcc.conf
+vosk-model-small-en-us-0.15/vosk-model-small-en-us-0.15/conf/model.conf
+vosk-model-small-en-us-0.15/vosk-model-small-en-us-0.15/graph/disambig_tid.int
+vosk-model-small-en-us-0.15/vosk-model-small-en-us-0.15/graph/Gr.fst
+vosk-model-small-en-us-0.15/vosk-model-small-en-us-0.15/graph/phones/word_boundary.int
+vosk-model-small-en-us-0.15/vosk-model-small-en-us-0.15/ivector/final.dubm
+vosk-model-small-en-us-0.15/vosk-model-small-en-us-0.15/ivector/final.ie
+vosk-model-small-en-us-0.15/vosk-model-small-en-us-0.15/ivector/final.mat
+vosk-model-small-en-us-0.15/vosk-model-small-en-us-0.15/ivector/online_cmvn.conf
+vosk-model-small-en-us-0.15/vosk-model-small-en-us-0.15/ivector/global_cmvn.stats
+vosk-model-small-en-us-0.15/vosk-model-small-en-us-0.15/ivector/splice.conf
+vosk-model-small-en-us-0.15/vosk-model-small-en-us-0.15/graph/HCLr.fst
