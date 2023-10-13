@@ -313,45 +313,46 @@ class SpeechListener:
 
   def writeToInput(self, text):
     if self.mode != 0 and text != "speech time":
-      match self.mode:
-        case 1:
-          if self.message != "":
-            self.message = self.message + " "
-            writeToEntry(" ")
-          self.message = self.message + text
-          writeToEntry(text)
-          print(self.message)
-        case 2:
-          if "with" in text:
-            wordInSentence = text.split('with', 1)[0].strip()
-            replaceString = text.split('with', 1)[1].strip()
-            self.message = self.message.replace(wordInSentence, replaceString)
+        if self.mode == 1:
+            if self.message != "":
+                self.message = self.message + " "
+                writeToEntry(" ")
+            self.message = self.message + text
+            writeToEntry(text)
+            print(self.message)
+        elif self.mode == 2:
+            if "with" in text:
+                wordInSentence = text.split('with', 1)[0].strip()
+                replaceString = text.split('with', 1)[1].strip()
+                self.message = self.message.replace(wordInSentence, replaceString)
+                print(self.message)
+                deleteInput()
+                writeToEntry(self.message)
+        elif self.mode == 3:
+            self.message = self.message.replace(text, '')
             print(self.message)
             deleteInput()
             writeToEntry(self.message)
-        case 3:
-          self.message = self.message.replace(text, '')
-          print(self.message)
-          deleteInput()
-          writeToEntry(self.message)
+          
 
   def commands(self, text):
-   match text:
-    case "send to chat"|"sent to chat"|"sent to check":
-      sendToChat(self.message)
-      deleteInput()
-      self.message = ""
-    case "continue":
-      self.mode = 1
-    case "replace":
-      self.mode = 2
-    case "remove":
-      self.mode = 3
-    case "again":
-      deleteInput()
-      self.message = ""
-    case _:
-      print("unknown command.")     
+    if text in ["send to chat", "sent to chat", "sent to check"]:
+        sendToChat(self.message)
+        deleteInput()
+        self.message = ""
+    elif text == "continue":
+        self.mode = 1
+    elif text == "replace":
+        self.mode = 2
+    elif text == "remove":
+        self.mode = 3
+    elif text == "again":
+        deleteInput()
+        self.message = ""
+    else:
+        print("unknown command.")
+
+
 # ----------- LOAD APP ----------- 
 
 
@@ -393,7 +394,7 @@ if __name__ == "__main__":
             app.words.append(row)
 
         speechListener = SpeechListener()
-        model = Model(r"D:\\UPS\AdvUI\TalkyHand\TalkyHand\vosk-model-small-en-us-0.15\vosk-model-small-en-us-0.15")
+        model = Model("vosk-model-small-en-us-0.15")
 
         recognizer = KaldiRecognizer(model, 16000) 
 
