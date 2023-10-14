@@ -106,10 +106,21 @@ class App(customtkinter.CTk):
               self.appMode = True
               changeAppModeBtn.configure(image=self.photoSign)
               
+        def start_recording():
+            print("starting recording...")
+            speechListener.startListening()
+
+        def stop_recording():
+            print("stopping recording...")
+            speechListener.stopListening()
 
         # Remember to edit the buttons 
         changeAppModeBtn = customtkinter.CTkButton(self.chatFrame, text="Change mode", image=self.photoSign, command=changeMode)
         changeAppModeBtn.grid(row=2, column=0, padx=20, pady=10)
+        recordBtn = customtkinter.CTkButton(self.chatFrame, text="Record", image=self.photoVoice)
+        recordBtn.grid(row=3, column=0, padx=20, pady=10)
+        recordBtn.bind('<ButtonPress-1>', lambda event: start_recording())
+        recordBtn.bind('<ButtonRelease-1>', lambda event: stop_recording())
 
         self.entry = customtkinter.CTkEntry(self.chatFrame, placeholder_text="Text here")
         self.entry.grid(row=1, sticky="nsew")
@@ -312,14 +323,13 @@ class SpeechListener:
     self.mode = 0
 
   def writeToInput(self, text):
-    if self.mode != 0 and text != "speech time":
+    if self.mode != 0:
         if self.mode == 1:
             if self.message != "":
                 self.message = self.message + " "
                 writeToEntry(" ")
             self.message = self.message + text
             writeToEntry(text)
-            print(self.message)
         elif self.mode == 2:
             if "with" in text:
                 wordInSentence = text.split('with', 1)[0].strip()
@@ -336,11 +346,7 @@ class SpeechListener:
           
 
   def commands(self, text):
-    if text in ["send to chat", "sent to chat", "sent to check"]:
-        sendToChat(self.message)
-        deleteInput()
-        self.message = ""
-    elif text == "continue":
+    if text == "continue":
         self.mode = 1
     elif text == "replace":
         self.mode = 2
@@ -351,7 +357,16 @@ class SpeechListener:
         self.message = ""
     else:
         print("unknown command.")
+      
 
+  def startListening(self):
+    self.mode = 1
+
+  def stopListening(self):
+    self.mode = 0
+    sendToChat(self.message)
+    deleteInput()
+    self.message = ""
 
 # ----------- LOAD APP ----------- 
 
@@ -369,12 +384,8 @@ def speech_recognition(event):
             text = recognizer.Result()
             text = text[14:-3]
             print(text)
-            if text == "goodbye":
-                speechListener.mode = 0
-            if text == "speech time":
-                speechListener.mode = 1
             
-            if text in ["send to chat","sent to chat","sent to check", "continue", "replace", "remove", "again"]:
+            if text in ["continue", "replace", "remove", "again"]:
                 speechListener.commands(text)
             else:
                 speechListener.writeToInput(text)
