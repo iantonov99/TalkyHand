@@ -6,14 +6,15 @@ from PIL import Image, ImageTk
 import mediapipe as mp
 from GestureRecognition.recognizer import GestureRecognizer
 
-"""
 from MotionRecognition.MotionRecognizer import MotionRecognizer
 from MotionRecognition.utils.mediapipe_utils import mediapipe_detection
-"""
+
 from vosk import Model, KaldiRecognizer
 import pyaudio
 import threading
 
+from chatSender import ChatSender
+import socket
 
 # ----------- DEFINE INTERFACE ----------- #
 
@@ -23,6 +24,42 @@ customtkinter.set_default_color_theme("green")  # Themes: "blue" (standard), "gr
 class App(customtkinter.CTk):
     def __init__(self):
         super().__init__()
+
+        try:
+            self.sender = ChatSender("192.168.126.52", 5555)
+        except Exception as e:
+            print("Error:", e)
+            exit()
+
+        # CHAT RECEIVER
+        self.server_host = "0.0.0.0"
+        self.server_port = 5555
+        self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server_socket.bind((self.server_host, self.server_port))
+        self.server_socket.listen(1)  # Maximum 1 connection at a time
+        self.client_socket, self.client_address = self.server_socket.accept()
+
+        receiver_thread = threading.Thread(target=self.receive_messages)
+        receiver_thread.daemon = True
+        receiver_thread.start()
+
+        # ----------- MODELS ----------- #
+
+        self.cap = cv2.VideoCapture(0)
+
+        # setup the gesture recognizer
+        self.gesture_recognizer = GestureRecognizer()
+        self.mp_drawing = mp.solutions.drawing_utils
+        self.mp_hands = mp.solutions.hands
+        self.hands = self.mp_hands.Hands(
+                static_image_mode=False,
+                max_num_hands=2,
+            )
+
+        # TODO: setup the motion recognizer
+        self.motion_recognizer = MotionRecognizer(self.cap)
+
+        self.current_message = ""
 
         # Words for prediction
         self.words = []
@@ -117,10 +154,17 @@ class App(customtkinter.CTk):
         # Remember to edit the buttons 
         changeAppModeBtn = customtkinter.CTkButton(self.chatFrame, text="Change mode", image=self.photoSign, command=changeMode)
         changeAppModeBtn.grid(row=2, column=0, padx=20, pady=10)
+
         recordBtn = customtkinter.CTkButton(self.chatFrame, text="Record", image=self.photoVoice)
         recordBtn.grid(row=3, column=0, padx=20, pady=10)
         recordBtn.bind('<ButtonPress-1>', lambda event: start_recording())
         recordBtn.bind('<ButtonRelease-1>', lambda event: stop_recording())
+
+        sendBtn = customtkinter.CTkButton(self.chatFrame, text="Send", command=lambda: self.send_message(self.entry.get()))
+        sendBtn.grid(row=2, column=1, padx=20, pady=10)
+
+        motionBtn = customtkinter.CTkButton(self.chatFrame, text="Motion", command=self.motion_recognizer.start_motion)
+        motionBtn.grid(row=4, column=0, padx=20, pady=10)
 
         self.entry = customtkinter.CTkEntry(self.chatFrame, placeholder_text="Text here")
         self.entry.grid(row=1, sticky="nsew")
@@ -131,27 +175,35 @@ class App(customtkinter.CTk):
         
 # ----------- CAMERA ----------- #
 
+        self.cap = cv2.VideoCapture(0)
+
         self.camera_canvas = tk.Canvas(self.container, width=600, height=600, bd=0, highlightthickness=0)
         self.camera_canvas.grid(row=0, column=0, padx=(20, 0), pady=20)
 
-# ----------- MODELS ----------- #
-
-        # setup the gesture recognizer
-        self.gesture_recognizer = GestureRecognizer()
-        self.mp_drawing = mp.solutions.drawing_utils
-        self.mp_hands = mp.solutions.hands
-        self.hands = self.mp_hands.Hands(
-                static_image_mode=False,
-                max_num_hands=2,
-            )
-
-        # TODO: setup the motion recognizer
-        # self.motion_recognizer = MotionRecognizer()
-
-        self.current_message = ""
-
         # Start capturing and displaying the camera feed
         self.start_camera()
+
+    def receive_messages(self):
+        print("LISTENING:")
+        while True: 
+            try:
+                data = self.client_socket.recv(1024)
+                if not data:
+                    break
+
+                received_text = data.decode()
+                print("Received:", received_text)
+                self.receive_message(received_text)
+
+            except ConnectionResetError:
+                print("Connection closed by the other side.")
+                break
+
+    def send_message(self, message):
+        print("SENDING:", message)
+        self.addToChat(message)
+        deleteInput()
+        self.sender.send_message(message)
 
     def perform_gesture_recognition(self, frame_rgb):
         # Process the frame
@@ -193,8 +245,9 @@ class App(customtkinter.CTk):
             print("TOP LEFT")
             # accept the first suggestion
             if len(self.suggestions) > 0:
-                print("ADDING SUGGESTION" + self.suggestions[0][0])
+                print("ADDING SUGGESTION: " + self.suggestions[0][0])
                 self.current_message = self.current_message + self.suggestions[0][0] + " "
+                self.writeToInput(self.suggestions[0][0] + " ")
                 self.gesture_recognizer.reset_text()
                 self.suggestions = []
         elif hand_landmarks.landmark[8].y < top_center[1] and hand_landmarks.landmark[8].x > top_center[0] and hand_landmarks.landmark[8].x < 1 - top_center[0]:
@@ -202,6 +255,7 @@ class App(customtkinter.CTk):
             # accept the second suggestion
             if len(self.suggestions) > 1:
                 self.current_message = self.current_message + self.suggestions[1][0] + " "
+                self.writeToInput(self.suggestions[1][0] + " ")
                 self.gesture_recognizer.reset_text()
                 self.suggestions = []
         elif hand_landmarks.landmark[8].x > top_right[0] and hand_landmarks.landmark[8].y < top_right[1]:
@@ -209,6 +263,7 @@ class App(customtkinter.CTk):
             # accept the third suggestion
             if len(self.suggestions) > 2:
                 self.current_message = self.current_message + self.suggestions[2][0] + " "
+                self.writeToInput(self.suggestions[2][0] + " ")
                 self.gesture_recognizer.reset_text()
                 self.suggestions = []
         elif hand_landmarks.landmark[8].x > bottom_right[0] and hand_landmarks.landmark[8].y > bottom_right[1]:
@@ -216,10 +271,8 @@ class App(customtkinter.CTk):
 
 
     def start_camera(self):
-        cap = cv2.VideoCapture(0)
-
         def update_camera():
-            _, frame = cap.read()
+            _, frame = self.cap.read()
             if frame is not None:
                 # Avoid mirroring the camera feed
                 frame_rgb = cv2.cvtColor(cv2.flip(frame, 1), cv2.COLOR_BGR2RGB)
@@ -233,9 +286,22 @@ class App(customtkinter.CTk):
                 # if the text contains a space, then it is a word to be added to the list
                 if " " in self.gesture_recognizer.get_current_text():
                     self.current_message += self.gesture_recognizer.get_current_text()
+                    self.writeToInput(self.gesture_recognizer.get_current_text() + " ")
                     self.gesture_recognizer.reset_text()
 
                 #print(self.current_message)
+
+                # Perform motion recognition
+                try:
+                    if self.motion_recognizer.is_recording():
+                        motion_detected = self.motion_recognizer.analyze(frame_rgb)
+                        print("recording...")
+
+                        if motion_detected is not None:
+                            self.current_message += motion_detected
+                            self.writeToInput(motion_detected + " ")
+                except Exception as e:
+                    print(f"Failed analysys with motion recognizer: {e}")
 
                 # auto complete
                 try:
@@ -299,12 +365,17 @@ class App(customtkinter.CTk):
 
     def addToChat(self, textToAdd):
       label = customtkinter.CTkLabel(self.chat, wraplength=250, fg_color="#35999c", corner_radius=20, text=textToAdd)
-      label.grid(row=len(self.chat.grid_slaves()) + 1, column=1, padx=10, pady=10, sticky="nsew")
+      label.grid(row=len(self.chat.grid_slaves()) + 1, column=2, padx=10, pady=10, sticky="nsew")
       self.chat.update()
+
+    def receive_message(self, textReceived):
+        label = customtkinter.CTkLabel(self.chat, wraplength=250, fg_color="#35999c", corner_radius=20, text=textReceived)
+        label.grid(row=len(self.chat.grid_slaves()) + 1, column=1, padx=10, pady=10, sticky="nsew")
+        self.chat.update()
 
     def create_thread(self):
 	    return threading.Thread(target=speech_recognition, args=(self.event,))
-    
+
 
 def writeToEntry(text):
    app.writeToInput(text)
