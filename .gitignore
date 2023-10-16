@@ -1,8 +1,5 @@
 MyStuff
 
-#vosk folder
-vosk-model-small-en-us-0.15
-
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
