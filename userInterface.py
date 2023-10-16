@@ -71,8 +71,8 @@ class App(customtkinter.CTk):
         #threat for speech recognition detection
         self.appMode = True # True - sign recognition, False - speech recognition
         self.event = threading.Event()
-        self.secondary_thread = self.create_thread()
-        self.secondary_thread.daemon = True  # Allow the thread to exit when the main program ends
+        self.speech_thread = self.create_thread()
+        self.speech_thread.daemon = True  # Allow the thread to exit when the main program ends
 
         # Get screen width and height
         screen_width = self.winfo_screenwidth()
@@ -132,9 +132,9 @@ class App(customtkinter.CTk):
         def changeMode():
             if self.appMode == True:
               self.event.clear()
-              self.secondary_thread = self.create_thread()
-              self.secondary_thread.daemon = True  # Allow the thread to exit when the main program ends
-              self.secondary_thread.start()
+              self.speech_thread = self.create_thread()
+              self.speech_thread.daemon = True  # Allow the thread to exit when the main program ends
+              self.speech_thread.start()
               self.appMode = False
               changeAppModeBtn.configure(image=self.photoVoice)
             else:
@@ -151,20 +151,27 @@ class App(customtkinter.CTk):
             print("stopping recording...")
             speechListener.stopListening()
 
+        def recordBtnAction(self):
+            if self.appMode == True:
+                self.motion_recognizer.start_motion()
+                self.gesture_recognizer.setSave_text_mode()
+                print("Tracking recognition")
+            else:
+                if speechListener.getSpeechMode() == 0:
+                    start_recording()
+                else:
+                    stop_recording()
+
+
         # Remember to edit the buttons 
         changeAppModeBtn = customtkinter.CTkButton(self.chatFrame, text="Change mode", image=self.photoSign, command=changeMode)
         changeAppModeBtn.grid(row=2, column=0, padx=20, pady=10)
 
-        recordBtn = customtkinter.CTkButton(self.chatFrame, text="Record", image=self.photoVoice)
+        recordBtn = customtkinter.CTkButton(self.chatFrame, text="Record", image=self.photoVoice, command= lambda: recordBtnAction(self))
         recordBtn.grid(row=3, column=0, padx=20, pady=10)
-        recordBtn.bind('<ButtonPress-1>', lambda event: start_recording())
-        recordBtn.bind('<ButtonRelease-1>', lambda event: stop_recording())
 
         sendBtn = customtkinter.CTkButton(self.chatFrame, text="Send", command=lambda: self.send_message(self.entry.get()))
         sendBtn.grid(row=2, column=1, padx=20, pady=10)
-
-        motionBtn = customtkinter.CTkButton(self.chatFrame, text="Motion", command=self.motion_recognizer.start_motion)
-        motionBtn.grid(row=4, column=0, padx=20, pady=10)
 
         self.entry = customtkinter.CTkEntry(self.chatFrame, placeholder_text="Text here")
         self.entry.grid(row=1, sticky="nsew")
@@ -203,7 +210,8 @@ class App(customtkinter.CTk):
         print("SENDING:", message)
         self.addToChat(message)
         deleteInput()
-        self.sender.send_message(message)
+        if self.sender != None:
+            self.sender.send_message(message)
 
     def perform_gesture_recognition(self, frame_rgb):
         # Process the frame
@@ -432,12 +440,16 @@ class SpeechListener:
 
   def startListening(self):
     self.mode = 1
+    self.message = ""
 
   def stopListening(self):
     self.mode = 0
     sendToChat(self.message)
     deleteInput()
     self.message = ""
+
+  def getSpeechMode(self):
+      return self.mode
 
 # ----------- LOAD APP ----------- 
 

@@ -140,6 +140,10 @@ class GestureRecognizer:
                     gesture_name = "unknown", 1 - single_hand_gesture_data[0].score
                     self.current_gestures.append(gesture_name)
         self.lock.release()
+
+    def setSave_text_mode(self):
+        print(self.save_text_mode)
+        self.save_text_mode = not self.save_text_mode
         
 
 if __name__ == '__main__':
