@@ -5,16 +5,15 @@ class ChatSender:
     def __init__(self, host, port):
         # self.app = app
 
-        # setup client as thread
-        thread = threading.Thread(target=self.setup_client, args=(host, port))
-        thread.daemon = True
-        thread.start()
+        self.host = host
+        self.port = port
 
 
-    def setup_client(self, host, port):
+    def setup_client(self):
         print("SETUP CLIENT")
         self.client_socket_send = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.client_socket_send.connect((host, port))
+        self.client_socket_send.settimeout(5)
+        self.client_socket_send.connect((self.host, self.port))
 
         print("CONNECTED!")
 

@@ -8,7 +8,6 @@ class ChatReceiver:
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.bind((self.server_host, self.server_port))
         self.server_socket.listen(1)  # Maximum 1 connection at a time
-        self.client_socket, self.client_address = self.server_socket.accept()
 
         self.current_message = ""
 
@@ -17,6 +16,8 @@ class ChatReceiver:
         self.receive_thread.start()
 
     def receive_messages(self):
+        self.client_socket, self.client_address = self.server_socket.accept()
+        
         print("LISTENING:")
         while True: 
             try:

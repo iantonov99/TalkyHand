@@ -25,11 +25,11 @@ class App(customtkinter.CTk):
     def __init__(self):
         super().__init__()
 
-        try:
-            self.sender = ChatSender("192.168.126.52", 5555)
-        except Exception as e:
-            print("Error:", e)
-            exit()
+        # create a chatsender as a separate thread
+        self.sender = ChatSender("127.0.0.1", 5555)
+        self.sender_thread = threading.Thread(target=self.sender.setup_client)
+        self.sender_thread.daemon = True
+        self.sender_thread.start()
 
         # CHAT RECEIVER
         self.server_host = "0.0.0.0"
@@ -440,7 +440,6 @@ class SpeechListener:
     self.message = ""
 
 # ----------- LOAD APP ----------- 
-
 
 def speech_recognition(event):
     stream = mic.open(format=pyaudio.paInt16, channels=1, rate=16000, input=True, frames_per_buffer=8192)
