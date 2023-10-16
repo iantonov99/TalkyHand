@@ -62,8 +62,8 @@ class MotionRecognizer:
 
             cap.release()
             cv2.destroyAllWindows()
-            """    
-        
+            """
+
     def analyze(self, frame):
         try:
             # Make detections
@@ -71,7 +71,9 @@ class MotionRecognizer:
 
             # Process results
             sign_detected = self.sign_recorder.recognize(results)
-            
+
+            # self.webcam_manager.update(frame, results, sign_detected, self.is_recording)
+
             return sign_detected
         except Exception as e:
             print(f"Failed to recognize motion: {e}")
