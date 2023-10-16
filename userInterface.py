@@ -4,10 +4,10 @@ import csv
 import cv2
 from PIL import Image, ImageTk
 import mediapipe as mp
+
 from GestureRecognition.recognizer import GestureRecognizer
 
 from MotionRecognition.MotionRecognizer import MotionRecognizer
-from MotionRecognition.utils.mediapipe_utils import mediapipe_detection
 
 from vosk import Model, KaldiRecognizer
 import pyaudio
@@ -59,7 +59,7 @@ class App(customtkinter.CTk):
             max_num_hands=2,
         )
 
-        # TODO: setup the motion recognizer
+        # setup the motion recognizer
         self.motion_recognizer = MotionRecognizer(self.cap)
 
         self.current_message = ""
@@ -309,22 +309,6 @@ class App(customtkinter.CTk):
             padx=10,
             pady=7,
         )
-
-        # ----------- MODELS ----------- #
-
-        # setup the gesture recognizer
-        self.gesture_recognizer = GestureRecognizer()
-        self.mp_drawing = mp.solutions.drawing_utils
-        self.mp_hands = mp.solutions.hands
-        self.hands = self.mp_hands.Hands(
-            static_image_mode=False,
-            max_num_hands=2,
-        )
-
-        # TODO: setup the motion recognizer
-        # self.motion_recognizer = MotionRecognizer()
-
-        self.current_message = ""
 
         # Start capturing and displaying the camera feed
         self.start_camera()

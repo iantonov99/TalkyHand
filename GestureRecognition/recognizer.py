@@ -1,4 +1,5 @@
 # STEP 1: Imports
+import os
 import mediapipe as mp
 from mediapipe.tasks import python
 import cv2
@@ -23,7 +24,7 @@ class GestureRecognizer:
         self.CONFIDENCE_THRESHOLD = 0.75
         self.TIME_THRESHOLD = 0.75
 
-        model_path = "./GestureRecognition/gesture_recognizer.task"
+        model_path = os.path.join("GestureRecognition", "gesture_recognizer.task")
 
         # STEP 2: Create the task
         GestureRecognizer = mp.tasks.vision.GestureRecognizer
@@ -40,7 +41,6 @@ class GestureRecognizer:
 
         self.recognizer = GestureRecognizer.create_from_options(options)
 
-        mp_drawing = mp.solutions.drawing_utils
         self.mp_hands = mp.solutions.hands
         self.hands = self.mp_hands.Hands(
             static_image_mode=False,
