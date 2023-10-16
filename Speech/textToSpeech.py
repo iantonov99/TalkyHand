@@ -1,8 +1,20 @@
-# pip3 install gTTS playsound
+# Coqui TTS API -> pip or pip3 install TTS 
+# TO DO : connect to the main UI -> each text, pressed -> read
 
-import gtts
-from playsound import playsound
+import torch
+from TTS.api import TTS
 
-tts = gtts.gTTS("Hello world")
-tts.save("hello.mp3")
-playsound("hello.mp3")
+# Get device
+device = "cuda" if torch.cuda.is_available() else "cpu"
+
+# List available 🐸TTS models and choose the first one
+model_name = TTS().list_models()[0]
+# Init TTS
+tts = TTS(model_name).to(device)
+
+# Run TTS
+# ❗ Since this model is multi-speaker and multi-lingual, we must set the target speaker and the language
+# Text to speech with a numpy output
+wav = tts.tts("This is a test! This is also a test!!", speaker=tts.speakers[0], language=tts.languages[0])
+# Text to speech to a file
+tts.tts_to_file(text="Hello world!", speaker=tts.speakers[0], language=tts.languages[0], file_path="output.wav")
