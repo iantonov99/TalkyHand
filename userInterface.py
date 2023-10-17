@@ -305,6 +305,9 @@ class App(customtkinter.CTk):
             pady=7,
         )
 
+        self.receive_message("This is where you will see your friend's messages!")
+        self.addToChat("This is where you will see your messages!")
+
         # Start capturing and displaying the camera feed
         self.start_camera()
 
@@ -460,8 +463,16 @@ class App(customtkinter.CTk):
                         motion_detected = self.motion_recognizer.analyze(flipped_frame)
 
                         if motion_detected is not None:
-                            self.current_message += motion_detected
-                            self.writeToInput(motion_detected + " ")
+                            print(motion_detected)
+                            if motion_detected != "Unknown sign":
+                                self.current_message += motion_detected
+                                self.writeToInput(motion_detected + " ")
+                            else:
+                                print("Unknown sign detected")
+                                self.status.configure(
+                                    text="Status: Unknown sign detected"
+                                )
+
                 except Exception as e:
                     print(f"Failed analysys with motion recognizer: {e}")
 
@@ -603,7 +614,7 @@ class App(customtkinter.CTk):
     def addToChat(self, textToAdd):
         label = customtkinter.CTkLabel(
             self.chat,
-            wraplength=self.chatFrame.winfo_width() / pi,
+            wraplength=148,
             fg_color="#76acdb",
             corner_radius=20,
             text=textToAdd,
@@ -621,7 +632,7 @@ class App(customtkinter.CTk):
     def receive_message(self, textReceived):
         label = customtkinter.CTkLabel(
             self.chat,
-            wraplength=self.chatFrame.winfo_width() / pi,
+            wraplength=148,
             fg_color="#7a76db",
             corner_radius=20,
             text=textReceived,
@@ -652,6 +663,7 @@ def deleteInput():
 
 def sendToChat(text):
     app.addToChat(text)
+
 
 def labelClicked(text):
     print("It's working " + text)
