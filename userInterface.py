@@ -41,11 +41,14 @@ class App(customtkinter.CTk):
                 self.speech_thread.start()
                 self.appMode = False
                 changeAppModeBtn.configure(image=self.photoVoice)
+                self.recordBtn.configure(image=self.recVoice)
+                self.status.configure(text="Status: Recording voice mode")
             else:
                 if self.event.is_set() == False:
                     self.event.set()
                 self.appMode = True
                 changeAppModeBtn.configure(image=self.photoSign)
+                self.status.configure(text="Status: Gesture recognition mode")
 
         def start_recording():
             print("starting recording...")
@@ -65,6 +68,7 @@ class App(customtkinter.CTk):
                 else:
                     changeAppModeBtn.configure(state=tk.NORMAL)
                 print("Tracking recognition")
+                self.status.configure(text="Status: Tracking recognition")
             else:
                 if speechListener.getSpeechMode() == 0:
                     start_recording()
@@ -72,6 +76,13 @@ class App(customtkinter.CTk):
                 else:
                     stop_recording()
                     changeAppModeBtn.configure(state=tk.NORMAL)
+                    
+            self.actionButtonActive = not self.actionButtonActive
+
+            if self.actionButtonActive:
+                self.recordBtn.configure(fg_color="#729c59")
+            else:
+                self.recordBtn.configure(fg_color="#9c6359")
 
         self.hostname = str(os.getenv("HOSTNAME"))
         self.port = int(os.getenv("PORT"))
@@ -114,7 +125,8 @@ class App(customtkinter.CTk):
         self.is_recording = False
 
         self.current_message = ""
-
+        self.actionButtonActive = False
+        
         # Words for prediction
         self.words = []
         self.suggestions = []
@@ -122,7 +134,9 @@ class App(customtkinter.CTk):
         self.title("TalkyHand")
         self.photoVoice = tk.PhotoImage(file=r"assets/voice_recognition.png")
         self.photoSign = tk.PhotoImage(file=r"assets/sign_recognition.png")
-
+        self.sentLogo = tk.PhotoImage(file=r"assets/sentLogo.png")
+        self.recVoice = tk.PhotoImage(file=r"assets/recording.png")
+        self.recHand = tk.PhotoImage(file=r"assets/gestures.png")
         # threat for speech recognition detection
         self.appMode = True  # True - sign recognition, False - speech recognition
         self.event = threading.Event()
@@ -182,7 +196,7 @@ class App(customtkinter.CTk):
             self.sidebar_frame,
             wraplength=200,
             text="Elevate your interactions with our advanced platform. Translate sign language into text and speech, utilize autocompletion, and streamline your messages with intuitive text editing."
-            + "\n"
+            + "\n\n"
             + "Experience the future of communication!",
         )
         self.intro.grid(row=2, column=0, padx=20, pady=10)
@@ -192,7 +206,7 @@ class App(customtkinter.CTk):
         self.status.grid(row=4, column=0, padx=20, pady=250)
         self.status.configure(
             text="Status: Main page"
-        )  # -> TO DO: to be updated it whenever there's a status change
+        )  # -> to update whenever there's a status change
 
         # HEADER
         self.header = customtkinter.CTkLabel(
@@ -206,15 +220,17 @@ class App(customtkinter.CTk):
 
         self.chatFrame = customtkinter.CTkFrame(self.container)
         self.chatFrame.grid(row=0, column=1, padx=20, pady=20, sticky="nsew")
+        
         # Allow row 0 (for the chat content) to expand
         self.chatFrame.grid_rowconfigure(0, weight=1)
-        self.chatFrame.grid_columnconfigure(1, weight=1)  # Allow column 0 to expand
-
+        self.chatFrame.grid_columnconfigure(0, weight=1) # Allow column 0 to expand
+        self.chatFrame.grid_columnconfigure(1, weight=1)
+        
         self.chat = customtkinter.CTkScrollableFrame(
             self.chatFrame, label_text="Messages", fg_color="#1d2126"
         )
         self.chat.grid(row=0, sticky="nsew")
-
+                            
         # Remember to edit the buttons
         changeAppModeBtn = customtkinter.CTkButton(
             self.sidebar_frame,
@@ -222,29 +238,39 @@ class App(customtkinter.CTk):
             image=self.photoSign,
             command=changeMode,
         )
-        changeAppModeBtn.grid(row=3, column=0, padx=20, pady=50)
+        changeAppModeBtn.grid(row=3, column=0, padx=20, pady=30)
+        
+        self.chatButtonContainer = customtkinter.CTkFrame(self.chatFrame)
+        self.chatButtonContainer.grid(row=1, padx=20, pady=10)
+        self.chatButtonContainer.grid_rowconfigure(0, weight=1)
+        self.chatButtonContainer.grid_rowconfigure(1, weight=1)
+        self.chatButtonContainer.grid_columnconfigure(0, weight=1) # Allow column 0 to expand
+        self.chatButtonContainer.grid_columnconfigure(1, weight=1)
+        
+        self.entry = customtkinter.CTkEntry(
+            self.chatButtonContainer, placeholder_text="Your output will appear here"
+        )
+        self.entry.grid(row=0, column=0, columnspan=2, sticky="nsew")
 
-        recordBtn = customtkinter.CTkButton(
-            self.chatFrame,
+        self.recordBtn = customtkinter.CTkButton(
+            self.chatButtonContainer,
+            image=self.recHand,
             text="Record",
-            image=self.photoVoice,
+            fg_color="#9c6359",
             command=lambda: recordBtnAction(self),
         )
-        recordBtn.grid(row=3, column=0, padx=20, pady=10)
-
-        sendBtn = customtkinter.CTkButton(
-            self.chatFrame,
+        self.recordBtn.grid(row=1, column=0, padx=20, pady=10)
+        
+        self.sendBtn = customtkinter.CTkButton(
+            self.chatButtonContainer,
+            image=self.sentLogo,
             text="Send",
+            fg_color="#59939c",
             command=lambda: self.send_message(self.entry.get()),
         )
-        sendBtn.grid(row=2, column=0, padx=20, pady=10)
+        self.sendBtn.grid(row=1, column=1, padx=20, pady=10)
 
-        self.entry = customtkinter.CTkEntry(
-            self.chatFrame, placeholder_text="Your speech will appear here"
-        )
-        self.entry.grid(row=1, sticky="nsew")
-
-        # create scrollable frame<
+        # create scrollable frame
         # self.scrollable_frame = customtkinter.CTkScrollableFrame(self, corner_radius=30)
         # self.scrollable_frame.grid(row=0, column=2, padx=20, pady=20, sticky="nsew")
 
@@ -676,7 +702,6 @@ class SpeechListener:
 
 
 # ----------- LOAD APP -----------
-
 
 def speech_recognition(event):
     stream = mic.open(
