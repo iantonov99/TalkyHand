@@ -152,11 +152,11 @@ class App(customtkinter.CTk):
         screen_height = self.winfo_screenheight()
 
         # Calculate the x and y coordinates to center the window
-        x = (screen_width - 1200) // 2
+        x = (screen_width - 1350) // 2
         y = (screen_height - 800) // 2
 
         # Display window in th
-        self.geometry(f"1200x800+{x}+{y}")
+        self.geometry(f"1350x800+{x}+{y}")
 
         # Configure grid layout
         # Change weight to 0 to prevent the sidebar from expanding
