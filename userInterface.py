@@ -611,6 +611,7 @@ class App(customtkinter.CTk):
             pady=10,
             sticky="e",
         )
+        label.bind("<Button-1>",lambda e,text=textToAdd:labelClicked(text=textToAdd))
         self.chat.update()
 
     def receive_message(self, textReceived):
@@ -628,6 +629,7 @@ class App(customtkinter.CTk):
             pady=10,
             sticky="w",
         )
+        label.bind("<Button-1>",lambda e,text=textReceived:labelClicked(text=textReceived))
         self.chat.update()
 
     def create_thread(self):
@@ -644,6 +646,9 @@ def deleteInput():
 
 def sendToChat(text):
     app.addToChat(text)
+
+def labelClicked(text):
+    print("It's working " + text)
 
 
 class SpeechListener:
