@@ -612,6 +612,8 @@ class App(customtkinter.CTk):
         return self.event.is_set()
 
     def addToChat(self, textToAdd):
+        textToAdd = textToAdd.lower()
+
         label = customtkinter.CTkLabel(
             self.chat,
             wraplength=148,
