@@ -53,10 +53,12 @@ class App(customtkinter.CTk):
         def start_recording():
             print("starting recording...")
             speechListener.startListening()
+            self.status.configure(text="Status: Is recording")
 
         def stop_recording():
             print("stopping recording...")
             speechListener.stopListening()
+            self.status.configure(text="Status: Stop recording")
 
         def recordBtnAction(self):
             if self.appMode == True:
@@ -602,7 +604,7 @@ class App(customtkinter.CTk):
         label = customtkinter.CTkLabel(
             self.chat,
             wraplength=self.chatFrame.winfo_width() / pi,
-            fg_color="#35999c",
+            fg_color="#76acdb",
             corner_radius=20,
             text=textToAdd,
         )
@@ -620,7 +622,7 @@ class App(customtkinter.CTk):
         label = customtkinter.CTkLabel(
             self.chat,
             wraplength=self.chatFrame.winfo_width() / pi,
-            fg_color="#35999c",
+            fg_color="#7a76db",
             corner_radius=20,
             text=textReceived,
         )
@@ -650,7 +652,6 @@ def deleteInput():
 
 def sendToChat(text):
     app.addToChat(text)
-
 
 def labelClicked(text):
     print("It's working " + text)
