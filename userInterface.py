@@ -57,14 +57,21 @@ class App(customtkinter.CTk):
 
         def recordBtnAction(self):
             if self.appMode == True:
+                self.is_recording = not self.is_recording
                 self.motion_recognizer.start_motion()
                 self.gesture_recognizer.flip_save_text_mode()
+                if self.is_recording == True:
+                    changeAppModeBtn.configure(state=tk.DISABLED)
+                else:
+                    changeAppModeBtn.configure(state=tk.NORMAL)
                 print("Tracking recognition")
             else:
                 if speechListener.getSpeechMode() == 0:
                     start_recording()
+                    changeAppModeBtn.configure(state=tk.DISABLED)
                 else:
                     stop_recording()
+                    changeAppModeBtn.configure(state=tk.NORMAL)
 
         self.hostname = str(os.getenv("HOSTNAME"))
         self.port = int(os.getenv("PORT"))
@@ -104,6 +111,7 @@ class App(customtkinter.CTk):
 
         # setup the motion recognizer
         self.motion_recognizer = MotionRecognizer(self.cap)
+        self.is_recording = False
 
         self.current_message = ""
 
@@ -337,15 +345,12 @@ class App(customtkinter.CTk):
         ):
             print("TOP LEFT")
             # accept the first suggestion
-            if (
-                len(self.suggestions) > 0
-                and self.gesture_recognizer.get_save_text_mode()
-            ):
-                print("ADDING SUGGESTION: " + self.suggestions[0][0])
+            if len(self.suggestions) > 1:
+                print("ADDING SUGGESTION: " + self.suggestions[1][0])
                 self.current_message = (
-                    self.current_message + self.suggestions[0][0] + " "
+                    self.current_message + self.suggestions[1][0] + " "
                 )
-                self.writeToInput(self.suggestions[0][0] + " ")
+                self.writeToInput(self.suggestions[1][0] + " ")
                 self.gesture_recognizer.reset_text()
                 self.suggestions = []
         elif (
@@ -356,11 +361,11 @@ class App(customtkinter.CTk):
         ):
             print("TOP CENTER")
             # accept the second suggestion
-            if len(self.suggestions) > 1:
+            if len(self.suggestions) > 0:
                 self.current_message = (
-                    self.current_message + self.suggestions[1][0] + " "
+                    self.current_message + self.suggestions[0][0] + " "
                 )
-                self.writeToInput(self.suggestions[1][0] + " ")
+                self.writeToInput(self.suggestions[0][0] + " ")
                 self.gesture_recognizer.reset_text()
                 self.suggestions = []
         elif (
@@ -476,6 +481,9 @@ class App(customtkinter.CTk):
         update_camera()
 
     def predictCompletion(self, substring, frame_rgb):
+
+        self.suggestions = []
+
         if len(substring) > 1:
             self.suggestions = [
                 word
@@ -484,63 +492,73 @@ class App(customtkinter.CTk):
                 and word[0].lower() != substring.lower()
             ]
 
-            frame_x = frame_rgb.shape[1]
+            if len(self.suggestions) > 0:
+                # first suggestion to the middle, second to the left and third one to the right
+                # draw and fill a small orange rectangle on the top left corner of the camera canvas of the size of the first suggestion
+                frame_x = frame_rgb.shape[1]
 
-            # draw and fill a small orange rectangle on the top left corner of the camera canvas of the size of the first suggestion
-            cv2.rectangle(
-                frame_rgb,
-                (40, 23),
-                (40 + len(self.suggestions[0][0]) * 20 - 20, 23 + 30),
-                (255, 165, 0),
-                -1,
-            )
-            # draw and fill a small orange rectangle on the top center corner of the camera canvas of the size of the second suggestion
-            cv2.rectangle(
-                frame_rgb,
-                (frame_x // 2 - len(self.suggestions[1][0]) * 20 // 2, 23),
-                (frame_x // 2 + (len(self.suggestions[1][0]) - 1) * 20 // 2, 23 + 30),
-                (255, 165, 0),
-                -1,
-            )
-            # draw and fill a small orange rectangle on the top right corner of the camera canvas of the size of the third suggestion
-            cv2.rectangle(
-                frame_rgb,
-                (frame_x - 40 - len(self.suggestions[2][0]) * 20, 23),
-                (frame_x - 40, 23 + 30),
-                (255, 165, 0),
-                -1,
-            )
+                # draw and fill a small orange rectangle on the top center corner of the camera canvas of the size of the second suggestion
+                cv2.rectangle(
+                    frame_rgb,
+                    (frame_x // 2 - len(self.suggestions[0][0]) * 20 // 2, 23),
+                    (frame_x // 2 + (len(self.suggestions[0][0]) - 1) * 20 // 2, 23 + 30),
+                    (255, 165, 0),
+                    -1,
+                )
+                # write the second suggestion inside the second rectangle
+                cv2.putText(
+                    frame_rgb,
+                    self.suggestions[0][0],
+                    (frame_x // 2 - len(self.suggestions[0][0]) * 20 // 2, 50),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    1,
+                    (255, 255, 255),
+                    2,
+                )
+                
+                if len(self.suggestions) > 1:
+                    cv2.rectangle(
+                        frame_rgb,
+                        (40, 23),
+                        (40 + len(self.suggestions[1][0]) * 20 - 20, 23 + 30),
+                        (255, 165, 0),
+                        -1,
+                    )
+                    # write the first suggestion inside the first rectangle
+                    cv2.putText(
+                        frame_rgb,
+                        self.suggestions[1][0],
+                        (40, 50),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        1,
+                        (255, 255, 255),
+                        2,
+                    )
+                
+                    if len(self.suggestions) > 2:        
+                        # draw and fill a small orange rectangle on the top right corner of the camera canvas of the size of the third suggestion
+                        cv2.rectangle(
+                            frame_rgb,
+                            (frame_x - 40 - len(self.suggestions[2][0]) * 20, 23),
+                            (frame_x - 40, 23 + 30),
+                            (255, 165, 0),
+                            -1,
+                        )
 
-            # write the first suggestion inside the first rectangle
-            cv2.putText(
-                frame_rgb,
-                self.suggestions[0][0],
-                (40, 50),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                1,
-                (255, 255, 255),
-                2,
-            )
-            # write the second suggestion inside the second rectangle
-            cv2.putText(
-                frame_rgb,
-                self.suggestions[1][0],
-                (frame_x // 2 - len(self.suggestions[1][0]) * 20 // 2, 50),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                1,
-                (255, 255, 255),
-                2,
-            )
-            # write the third suggestion inside the third rectangle
-            cv2.putText(
-                frame_rgb,
-                self.suggestions[2][0],
-                (frame_x - 40 - len(self.suggestions[2][0]) * 20, 50),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                1,
-                (255, 255, 255),
-                2,
-            )
+                        # write the third suggestion inside the third rectangle
+                        cv2.putText(
+                            frame_rgb,
+                            self.suggestions[2][0],
+                            (frame_x - 40 - len(self.suggestions[2][0]) * 20, 50),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            1,
+                            (255, 255, 255),
+                            2,
+                        )
+
+
+                
+            
 
     # methods for connecting the speech to text with the UI
     def writeToInput(self, text):
@@ -650,8 +668,7 @@ class SpeechListener:
 
     def stopListening(self):
         self.mode = 0
-        sendToChat(self.message)
-        deleteInput()
+        app.send_message(self.message)
         self.message = ""
 
     def getSpeechMode(self):
