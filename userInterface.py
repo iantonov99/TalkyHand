@@ -245,53 +245,14 @@ class App(customtkinter.CTk):
         self.cap = cv2.VideoCapture(0)
 
         self.camera_canvas = tk.Canvas(
-            self.container, width=600, height=600, bd=0, highlightthickness=0
+            self.container,
+            width=600,
+            height=600,
+            bd=0,
+            highlightthickness=0,
+            bg="#2b2b2b",
         )
         self.camera_canvas.grid(row=0, column=0, padx=(20, 0), pady=20)
-
-        # Show the autocompletion words
-        self.autoC1 = customtkinter.CTkLabel(
-            self.container,
-            bg_color="transparent",
-            fg_color="#eb9534",
-            corner_radius=3,
-            justify="center",
-            font=("Helvetica", 20),
-            padx=10,
-            pady=10,
-        )
-        self.autoC2 = customtkinter.CTkLabel(
-            self.container,
-            fg_color="#eb9534",
-            corner_radius=3,
-            justify="center",
-            font=("Helvetica", 20),
-            padx=10,
-            pady=10,
-        )
-        self.autoC3 = customtkinter.CTkLabel(
-            self.container,
-            fg_color="#eb9534",
-            corner_radius=3,
-            justify="center",
-            font=("Helvetica", 20),
-            padx=10,
-            pady=10,
-        )
-
-        # put a label for sending messages (when in gesture recognition moving the hand on the bottom right corner sends the message)
-        send_label = customtkinter.CTkLabel(
-            self.container,
-            fg_color="#eb9534",
-            corner_radius=3,
-            justify="center",
-            font=("Helvetica", 20),
-            padx=10,
-            pady=10,
-        )
-        send_label.configure(text="Send")
-        # place it on the bottom right corner of the camera canvas
-        send_label.place(x=400, y=500)
 
         # Show the Gesture-to-Text -> word and phrase
         self.GTT = customtkinter.CTkLabel(
@@ -469,6 +430,25 @@ class App(customtkinter.CTk):
 
                 self.draw_landmarks(results, frame_rgb)
 
+                # draw and fill a small orange rectangle on the bottom right corner of the camera canvas (with written "Send") (it should be inside the canvas)
+                cv2.rectangle(
+                    frame_rgb,
+                    (frame_rgb.shape[1] - 100, frame_rgb.shape[0] - 50),
+                    (frame_rgb.shape[1], frame_rgb.shape[0]),
+                    (255, 165, 0),
+                    -1,
+                )
+                # write "Send" inside the rectangle
+                cv2.putText(
+                    frame_rgb,
+                    "Send",
+                    (frame_rgb.shape[1] - 100, frame_rgb.shape[0] - 20),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    1,
+                    (255, 255, 255),
+                    2,
+                )
+
                 # Calculate dimensions to fit the frame within the square canvas
                 canvas_size = self.camera_canvas.winfo_width()
                 frame_height, frame_width, _ = frame_rgb.shape
@@ -504,12 +484,63 @@ class App(customtkinter.CTk):
                 and word[0].lower() != substring.lower()
             ]
 
-            self.autoC1.configure(text=self.suggestions[0][0])
-            self.autoC2.configure(text=self.suggestions[1][0])
-            self.autoC3.configure(text=self.suggestions[2][0])
-            self.autoC1.place(x=40, y=23)
-            self.autoC2.place(x=315, y=23)
-            self.autoC3.place(x=600, y=23)
+            frame_x = frame_rgb.shape[1]
+
+            # draw and fill a small orange rectangle on the top left corner of the camera canvas of the size of the first suggestion
+            cv2.rectangle(
+                frame_rgb,
+                (40, 23),
+                (40 + len(self.suggestions[0][0]) * 20 - 20, 23 + 30),
+                (255, 165, 0),
+                -1,
+            )
+            # draw and fill a small orange rectangle on the top center corner of the camera canvas of the size of the second suggestion
+            cv2.rectangle(
+                frame_rgb,
+                (frame_x // 2 - len(self.suggestions[1][0]) * 20 // 2, 23),
+                (frame_x // 2 + (len(self.suggestions[1][0]) - 1) * 20 // 2, 23 + 30),
+                (255, 165, 0),
+                -1,
+            )
+            # draw and fill a small orange rectangle on the top right corner of the camera canvas of the size of the third suggestion
+            cv2.rectangle(
+                frame_rgb,
+                (frame_x - 40 - len(self.suggestions[2][0]) * 20, 23),
+                (frame_x - 40, 23 + 30),
+                (255, 165, 0),
+                -1,
+            )
+
+            # write the first suggestion inside the first rectangle
+            cv2.putText(
+                frame_rgb,
+                self.suggestions[0][0],
+                (40, 50),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1,
+                (255, 255, 255),
+                2,
+            )
+            # write the second suggestion inside the second rectangle
+            cv2.putText(
+                frame_rgb,
+                self.suggestions[1][0],
+                (frame_x // 2 - len(self.suggestions[1][0]) * 20 // 2, 50),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1,
+                (255, 255, 255),
+                2,
+            )
+            # write the third suggestion inside the third rectangle
+            cv2.putText(
+                frame_rgb,
+                self.suggestions[2][0],
+                (frame_x - 40 - len(self.suggestions[2][0]) * 20, 50),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1,
+                (255, 255, 255),
+                2,
+            )
 
     # methods for connecting the speech to text with the UI
     def writeToInput(self, text):
