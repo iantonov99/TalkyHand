@@ -1,4 +1,4 @@
-from json import load
+from math import pi
 import tkinter as tk
 import customtkinter
 import csv
@@ -67,6 +67,7 @@ class App(customtkinter.CTk):
                     changeAppModeBtn.configure(state=tk.DISABLED)
                 else:
                     changeAppModeBtn.configure(state=tk.NORMAL)
+                    self.gesture_recognizer.reset_text()
                 print("Tracking recognition")
                 self.status.configure(text="Status: Tracking recognition")
             else:
@@ -76,13 +77,13 @@ class App(customtkinter.CTk):
                 else:
                     stop_recording()
                     changeAppModeBtn.configure(state=tk.NORMAL)
-                    
+
             self.actionButtonActive = not self.actionButtonActive
 
             if self.actionButtonActive:
-                self.recordBtn.configure(fg_color="#729c59")
+                self.recordBtn.configure(fg_color="#729c59", hover_color="#5f8c50")
             else:
-                self.recordBtn.configure(fg_color="#9c6359")
+                self.recordBtn.configure(fg_color="#9c6359", hover_color="#8c5a50")
 
         self.hostname = str(os.getenv("HOSTNAME"))
         self.port = int(os.getenv("PORT"))
@@ -126,7 +127,7 @@ class App(customtkinter.CTk):
 
         self.current_message = ""
         self.actionButtonActive = False
-        
+
         # Words for prediction
         self.words = []
         self.suggestions = []
@@ -149,11 +150,11 @@ class App(customtkinter.CTk):
         screen_height = self.winfo_screenheight()
 
         # Calculate the x and y coordinates to center the window
-        x = (screen_width - 1300) // 2
+        x = (screen_width - 1200) // 2
         y = (screen_height - 800) // 2
 
         # Display window in th
-        self.geometry(f"1300x800+{x}+{y}")
+        self.geometry(f"1200x800+{x}+{y}")
 
         # Configure grid layout
         # Change weight to 0 to prevent the sidebar from expanding
@@ -220,17 +221,17 @@ class App(customtkinter.CTk):
 
         self.chatFrame = customtkinter.CTkFrame(self.container)
         self.chatFrame.grid(row=0, column=1, padx=20, pady=20, sticky="nsew")
-        
+
         # Allow row 0 (for the chat content) to expand
         self.chatFrame.grid_rowconfigure(0, weight=1)
-        self.chatFrame.grid_columnconfigure(0, weight=1) # Allow column 0 to expand
+        self.chatFrame.grid_columnconfigure(0, weight=1)  # Allow column 0 to expand
         self.chatFrame.grid_columnconfigure(1, weight=1)
-        
+
         self.chat = customtkinter.CTkScrollableFrame(
             self.chatFrame, label_text="Messages", fg_color="#1d2126"
         )
         self.chat.grid(row=0, sticky="nsew")
-                            
+
         # Remember to edit the buttons
         changeAppModeBtn = customtkinter.CTkButton(
             self.sidebar_frame,
@@ -239,14 +240,16 @@ class App(customtkinter.CTk):
             command=changeMode,
         )
         changeAppModeBtn.grid(row=3, column=0, padx=20, pady=30)
-        
+
         self.chatButtonContainer = customtkinter.CTkFrame(self.chatFrame)
         self.chatButtonContainer.grid(row=1, padx=20, pady=10)
         self.chatButtonContainer.grid_rowconfigure(0, weight=1)
         self.chatButtonContainer.grid_rowconfigure(1, weight=1)
-        self.chatButtonContainer.grid_columnconfigure(0, weight=1) # Allow column 0 to expand
+        self.chatButtonContainer.grid_columnconfigure(
+            0, weight=1
+        )  # Allow column 0 to expand
         self.chatButtonContainer.grid_columnconfigure(1, weight=1)
-        
+
         self.entry = customtkinter.CTkEntry(
             self.chatButtonContainer, placeholder_text="Your output will appear here"
         )
@@ -257,10 +260,11 @@ class App(customtkinter.CTk):
             image=self.recHand,
             text="Record",
             fg_color="#9c6359",
+            hover_color="#8c5a50",
             command=lambda: recordBtnAction(self),
         )
         self.recordBtn.grid(row=1, column=0, padx=20, pady=10)
-        
+
         self.sendBtn = customtkinter.CTkButton(
             self.chatButtonContainer,
             image=self.sentLogo,
@@ -507,7 +511,6 @@ class App(customtkinter.CTk):
         update_camera()
 
     def predictCompletion(self, substring, frame_rgb):
-
         self.suggestions = []
 
         if len(substring) > 1:
@@ -527,7 +530,10 @@ class App(customtkinter.CTk):
                 cv2.rectangle(
                     frame_rgb,
                     (frame_x // 2 - len(self.suggestions[0][0]) * 20 // 2, 23),
-                    (frame_x // 2 + (len(self.suggestions[0][0]) - 1) * 20 // 2, 23 + 30),
+                    (
+                        frame_x // 2 + (len(self.suggestions[0][0]) - 1) * 20 // 2,
+                        23 + 30,
+                    ),
                     (255, 165, 0),
                     -1,
                 )
@@ -541,7 +547,7 @@ class App(customtkinter.CTk):
                     (255, 255, 255),
                     2,
                 )
-                
+
                 if len(self.suggestions) > 1:
                     cv2.rectangle(
                         frame_rgb,
@@ -560,8 +566,8 @@ class App(customtkinter.CTk):
                         (255, 255, 255),
                         2,
                     )
-                
-                    if len(self.suggestions) > 2:        
+
+                    if len(self.suggestions) > 2:
                         # draw and fill a small orange rectangle on the top right corner of the camera canvas of the size of the third suggestion
                         cv2.rectangle(
                             frame_rgb,
@@ -582,10 +588,6 @@ class App(customtkinter.CTk):
                             2,
                         )
 
-
-                
-            
-
     # methods for connecting the speech to text with the UI
     def writeToInput(self, text):
         self.entry.insert("end", text)
@@ -599,7 +601,7 @@ class App(customtkinter.CTk):
     def addToChat(self, textToAdd):
         label = customtkinter.CTkLabel(
             self.chat,
-            wraplength=250,
+            wraplength=self.chatFrame.winfo_width() / pi,
             fg_color="#35999c",
             corner_radius=20,
             text=textToAdd,
@@ -611,13 +613,13 @@ class App(customtkinter.CTk):
             pady=10,
             sticky="e",
         )
-        label.bind("<Button-1>",lambda e,text=textToAdd:labelClicked(text=textToAdd))
+        label.bind("<Button-1>", lambda e, text=textToAdd: labelClicked(text=textToAdd))
         self.chat.update()
 
     def receive_message(self, textReceived):
         label = customtkinter.CTkLabel(
             self.chat,
-            wraplength=250,
+            wraplength=self.chatFrame.winfo_width() / pi,
             fg_color="#35999c",
             corner_radius=20,
             text=textReceived,
@@ -629,7 +631,9 @@ class App(customtkinter.CTk):
             pady=10,
             sticky="w",
         )
-        label.bind("<Button-1>",lambda e,text=textReceived:labelClicked(text=textReceived))
+        label.bind(
+            "<Button-1>", lambda e, text=textReceived: labelClicked(text=textReceived)
+        )
         self.chat.update()
 
     def create_thread(self):
@@ -646,6 +650,7 @@ def deleteInput():
 
 def sendToChat(text):
     app.addToChat(text)
+
 
 def labelClicked(text):
     print("It's working " + text)
@@ -708,6 +713,7 @@ class SpeechListener:
 
 # ----------- LOAD APP -----------
 
+
 def speech_recognition(event):
     stream = mic.open(
         format=pyaudio.paInt16,
@@ -716,23 +722,27 @@ def speech_recognition(event):
         input=True,
         frames_per_buffer=8192,
     )
-    stream.start_stream()
+
     while True:
-        if app.shouldStopThread() == True:
-            break
+        stream.start_stream()
 
-        data = stream.read(4096)
+        while speechListener.getSpeechMode() != 0:
+            if app.shouldStopThread() == True:
+                break
 
-        if recognizer.AcceptWaveform(data):
-            text = recognizer.Result()
-            text = text[14:-3]
-            print(text)
+            data = stream.read(4096)
 
-            if text in ["continue", "replace", "remove", "again"]:
-                speechListener.commands(text)
-            else:
-                speechListener.writeToInput(text)
-    stream.stop_stream()
+            if recognizer.AcceptWaveform(data):
+                text = recognizer.Result()
+                text = text[14:-3]
+                print(text)
+
+                if text in ["continue", "replace", "remove", "again"]:
+                    speechListener.commands(text)
+                else:
+                    speechListener.writeToInput(text)
+
+        stream.stop_stream()
 
 
 # Create a separate thread for the secondary loop
