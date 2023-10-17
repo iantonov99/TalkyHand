@@ -33,37 +33,6 @@ class MotionRecognizer:
         except Exception as e:
             print(f"Failed to initialize motion recognizer: {e}")
 
-        """
-        # Turn on the webcam
-        cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
-        # Set up the Mediapipe environment
-        with mediapipe.solutions.holistic.Holistic(
-            min_detection_confidence=0.5, min_tracking_confidence=0.5
-        ) as self.holistic:
-            while cap.isOpened():
-
-                # Read feed
-                ret, frame = cap.read()
-
-                # Make detections
-                image, results = mediapipe_detection(frame, self.holistic)
-
-                # Process results
-                sign_detected, is_recording = sign_recorder.process_results(results)
-
-                # Update the frame (draw landmarks & display result)
-                webcam_manager.update(frame, results, sign_detected, is_recording)
-
-                pressedKey = cv2.waitKey(1) & 0xFF
-                if pressedKey == ord("r"):  # Record pressing r
-                    sign_recorder.record()
-                elif pressedKey == ord("q"):  # Break pressing q
-                    break
-
-            cap.release()
-            cv2.destroyAllWindows()
-            """
-
     def analyze(self, frame):
         try:
             # Make detections
@@ -71,8 +40,6 @@ class MotionRecognizer:
 
             # Process results
             sign_detected = self.sign_recorder.recognize(results)
-
-            # self.webcam_manager.update(frame, results, sign_detected, self.is_recording)
 
             return sign_detected
         except Exception as e:

@@ -1,6 +1,7 @@
 import socket
 import threading
 
+
 class ChatSender:
     def __init__(self, host, port):
         # self.app = app
@@ -8,11 +9,10 @@ class ChatSender:
         self.host = host
         self.port = port
 
-
     def setup_client(self):
         print("SETUP CLIENT")
         self.client_socket_send = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.client_socket_send.settimeout(5)
+        # self.client_socket_send.settimeout(5)
         self.client_socket_send.connect((self.host, self.port))
 
         print("CONNECTED!")
@@ -39,5 +39,3 @@ if __name__ == "__main__":
     except Exception as e:
         print("Error:", e)
         exit()
-
-    
