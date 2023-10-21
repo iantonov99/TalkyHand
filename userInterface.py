@@ -604,13 +604,14 @@ class App(customtkinter.CTk):
                             2,
                         )
 
-    # methods for connecting the speech to text with the UI
+    # Methods for connecting the speech to text with the UI
     def writeToInput(self, text):
         self.entry.insert("end", text)
 
     def removeInput(self):
         self.entry.delete(0, "end")
 
+    # Function to prepare the thread to stopping by lifting a flag
     def shouldStopThread(self):
         return self.event.is_set()
 
@@ -652,22 +653,22 @@ class App(customtkinter.CTk):
         )
         self.chat.update()
 
+    # Factory for threads because we can't reuse the same one so we initialise a new one everytime we change the mode
     def create_thread(self):
         return threading.Thread(target=speech_recognition, args=(self.event,))
 
 
+# Functions to link the speech recognition with the app UI
 def writeToEntry(text):
     app.writeToInput(text)
-
 
 def deleteInput():
     app.removeInput()
 
-
 def sendToChat(text):
     app.addToChat(text)
 
-
+# Text-to-speech
 def labelClicked(text):
     try:
         # Specify the text, language, and gender
@@ -766,7 +767,7 @@ def speech_recognition(event):
         stream.start_stream()
 
         while speechListener.getSpeechMode() != 0:
-            if app.shouldStopThread() == True:
+            if app.shouldStopThread() == True:       #if we change modes - this will exit the loop and finish the process of this thread
                 break
 
             data = stream.read(4096)
@@ -796,7 +797,7 @@ if __name__ == "__main__":
             app.words.append(row)
 
         speechListener = SpeechListener()
-        model = Model("vosk-model-small-en-us-0.15")
+        model = Model("vosk-model-small-en-us-0.15") # creating model for the speech recognition
 
         recognizer = KaldiRecognizer(model, 16000)
 
