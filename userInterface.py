@@ -50,6 +50,7 @@ class App(customtkinter.CTk):
                     self.event.set()
                 self.appMode = True
                 changeAppModeBtn.configure(image=self.photoSign)
+                self.recordBtn.configure(image=self.recHand)
                 self.status.configure(text="Status: Gesture recognition mode")
 
         def start_recording():
