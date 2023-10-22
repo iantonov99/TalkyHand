@@ -13,12 +13,15 @@ from MotionRecognition.MotionRecognizer import MotionRecognizer
 from vosk import Model, KaldiRecognizer
 import pyaudio
 import threading
+from Speech.textToSpeech import labelClicked
 
 from chatSender import ChatSender
 import socket
 
 import gtts
 from playsound import playsound
+
+from Speech.speechRecognition import SpeechListener
 
 load_dotenv()
 
@@ -60,6 +63,7 @@ class App(customtkinter.CTk):
 
         def stop_recording():
             print("stopping recording...")
+            self.send_message(speechListener.getText())
             speechListener.stopListening()
             self.status.configure(text="Status: Stop recording")
 
@@ -668,92 +672,7 @@ def deleteInput():
 def sendToChat(text):
     app.addToChat(text)
 
-# Text-to-speech
-def labelClicked(text):
-    try:
-        # Specify the text, language, and gender
-        language = "en"  # Language code for English
-        accent = "us"
-
-        # Create the gTTS object with speed control and male voice
-        tts = gtts.gTTS(text, lang=language, slow=False, tld=accent)
-
-        # Save the TTS output to a file
-        tts.save("Readable.mp3")
-
-        # Play the generated audio on a separate thread
-        audio_thread = threading.Thread(target=playAudio)
-        audio_thread.Daemon = True
-        audio_thread.start()
-    except Exception as e:
-        print(f"Failed to play audio: {e}")
-
-
-def playAudio():
-    playsound("Readable.mp3")
-
-    # Delete the file
-    os.remove("Readable.mp3")
-
-
-class SpeechListener:
-    def __init__(self):
-        self.stop_listening = None
-        self.shouldWriteToChat = False
-        self.message = ""
-        self.mode = 0
-
-    def writeToInput(self, text):
-        if self.mode != 0:
-            if self.mode == 1:
-                if self.message != "":
-                    self.message = self.message + " "
-                    writeToEntry(" ")
-                self.message = self.message + text
-                writeToEntry(text)
-            elif self.mode == 2:
-                if "with" in text:
-                    wordInSentence = text.split("with", 1)[0].strip()
-                    replaceString = text.split("with", 1)[1].strip()
-                    self.message = self.message.replace(wordInSentence, replaceString)
-                    print(self.message)
-                    deleteInput()
-                    writeToEntry(self.message)
-            elif self.mode == 3:
-                self.message = self.message.replace(text, "")
-                print(self.message)
-                deleteInput()
-                writeToEntry(self.message)
-
-    def commands(self, text):
-        if text == "continue":
-            self.mode = 1
-        elif text == "replace":
-            self.mode = 2
-        elif text == "remove":
-            self.mode = 3
-        elif text == "again":
-            deleteInput()
-            self.message = ""
-        else:
-            print("unknown command.")
-
-    def startListening(self):
-        self.mode = 1
-        self.message = ""
-
-    def stopListening(self):
-        self.mode = 0
-        app.send_message(self.message)
-        self.message = ""
-
-    def getSpeechMode(self):
-        return self.mode
-
-
-# ----------- LOAD APP -----------
-
-
+# Main logic for speech recognition
 def speech_recognition(event):
     stream = mic.open(
         format=pyaudio.paInt16,
@@ -765,10 +684,9 @@ def speech_recognition(event):
 
     while True:
         stream.start_stream()
-
+        if app.shouldStopThread() == True:       #if we change modes - this will exit the loop and finish the process of this thread
+            break
         while speechListener.getSpeechMode() != 0:
-            if app.shouldStopThread() == True:       #if we change modes - this will exit the loop and finish the process of this thread
-                break
 
             data = stream.read(4096)
 
@@ -779,13 +697,34 @@ def speech_recognition(event):
 
                 if text in ["continue", "replace", "remove", "again"]:
                     speechListener.commands(text)
+                    if text == "again":
+                        deleteInput()
                 else:
-                    speechListener.writeToInput(text)
+                    currentMode = speechListener.getSpeechMode()
+                    if currentMode != 0:
+                        if currentMode == 1:
+                            if speechListener.getText() != "":
+                                speechListener.setMessage(speechListener.getText() + " ")
+                                writeToEntry(" ")
+                            speechListener.setMessage(speechListener.getText() + text)
+                            writeToEntry(text)
+                        elif currentMode == 2:
+                            if "with" in text:
+                                wordInSentence = text.split("with", 1)[0].strip()
+                                replaceString = text.split("with", 1)[1].strip()
+                                speechListener.setMessage(speechListener.getText().replace(wordInSentence, replaceString))
+                                deleteInput()
+                                writeToEntry(speechListener.getText())
+                        elif currentMode == 3:
+                            speechListener.setMessage(speechListener.getText().replace(text, ""))
+                            deleteInput()
+                            writeToEntry(speechListener.getText())
 
         stream.stop_stream()
 
 
-# Create a separate thread for the secondary loop
+# ----------- LOAD APP -----------
+
 if __name__ == "__main__":
     try:
         app = App()
@@ -797,7 +736,7 @@ if __name__ == "__main__":
             app.words.append(row)
 
         speechListener = SpeechListener()
-        model = Model("vosk-model-small-en-us-0.15") # creating model for the speech recognition
+        model = Model("vosk-model-small-en-us-0.15") # getting model for the speech recognition
 
         recognizer = KaldiRecognizer(model, 16000)
 
