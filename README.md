@@ -6,7 +6,7 @@ More details are available in the [project report](deliverables/TalkyHand%20-%20
 
 ## Setup Guide
 
-To ensure optimal display, use a resolution of 1920x1080 with resizing set at 100%. The project has been tested with Python 3.9.0 and Python 3.10.0.
+To ensure optimal display, use a resolution of 1920x1080 with resizing set at 100%. The project has been tested with Python 3.9.0 and Python 3.11.5.
 
 1. Clone the repository:
 
