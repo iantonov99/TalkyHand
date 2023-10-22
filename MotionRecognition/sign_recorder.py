@@ -6,8 +6,6 @@ from MotionRecognition.utils.dtw import dtw_distances
 from MotionRecognition.models.sign_model import SignModel
 from MotionRecognition.utils.landmark_utils import extract_landmarks
 
-from MotionRecognition.utils.mediapipe_utils import mediapipe_detection
-
 
 class SignRecorder(object):
     def __init__(self, reference_signs: pd.DataFrame, seq_len=50):
@@ -36,13 +34,12 @@ class SignRecorder(object):
             else:
                 self.compute_distances()
                 print(self.reference_signs)
-        
+
         if np.sum(self.reference_signs["distance"].values) == 0:
             return None
-        
+
         self.reference_signs["distance"].values[:] = 0
         return self._get_sign_predicted()
-        
 
     def process_results(self, results) -> (str, bool):
         """
@@ -106,26 +103,3 @@ class SignRecorder(object):
         if count / batch_size < threshold:
             return "Unknown sign"
         return predicted_sign
-        """
-
-        # give each sign a weight depending on its similarity with the recorded sign (the first sign has the highest weight, then it falls off exponentially)
-        weights = np.exp(-np.arange(batch_size))
-        
-        # compute the sum of weights for each sign
-        sign_weights = {}
-        for sign, weight in zip(sign_names, weights):
-            if sign in sign_weights:
-                sign_weights[sign] += weight
-            else:
-                sign_weights[sign] = weight
-
-        # sort the signs by their weights
-        sign_weights = sorted(sign_weights.items(), key=lambda x: x[1], reverse=True)
-        predicted_sign, weight = sign_weights[0]
-
-        # if the weight of the most represented sign in the batch is greater than threshold, we output the sign_name
-        # if not, we output "Unknown sign"
-        if weight / np.sum(weights) < threshold:
-            return "Unknown sign"
-        return predicted_sign
-        """

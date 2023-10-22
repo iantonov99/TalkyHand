@@ -1,13 +1,8 @@
-import cv2
 import mediapipe
 
-try:
-    from MotionRecognition.utils.dataset_utils import load_dataset, load_reference_signs
-    from MotionRecognition.utils.mediapipe_utils import mediapipe_detection
-    from MotionRecognition.sign_recorder import SignRecorder
-    from MotionRecognition.webcam_manager import WebcamManager
-except Exception as e:
-    print(f"Failed to import: {e}")
+from MotionRecognition.utils.dataset_utils import load_dataset, load_reference_signs
+from MotionRecognition.utils.mediapipe_utils import mediapipe_detection
+from MotionRecognition.sign_recorder import SignRecorder
 
 
 class MotionRecognizer:
@@ -21,9 +16,6 @@ class MotionRecognizer:
 
             # Object that stores mediapipe results and computes sign similarities
             self.sign_recorder = SignRecorder(reference_signs)
-
-            # Object that draws keypoints & displays results
-            self.webcam_manager = WebcamManager()
 
             self.holistic = mediapipe.solutions.holistic.Holistic(
                 min_detection_confidence=0.5, min_tracking_confidence=0.5

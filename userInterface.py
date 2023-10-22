@@ -18,9 +18,6 @@ from Speech.textToSpeech import labelClicked
 from chatSender import ChatSender
 import socket
 
-import gtts
-from playsound import playsound
-
 from Speech.speechRecognition import SpeechListener
 
 load_dotenv()
@@ -37,63 +34,22 @@ class App(customtkinter.CTk):
     def __init__(self):
         super().__init__()
 
-        def changeMode():
-            if self.appMode == True:
-                self.event.clear()
-                self.speech_thread = self.create_thread()
-                # Allow the thread to exit when the main program ends
-                self.speech_thread.daemon = True
-                self.speech_thread.start()
-                self.appMode = False
-                changeAppModeBtn.configure(image=self.photoVoice)
-                self.recordBtn.configure(image=self.recVoice)
-                self.status.configure(text="Status: Recording voice mode")
-            else:
-                if self.event.is_set() == False:
-                    self.event.set()
-                self.appMode = True
-                changeAppModeBtn.configure(image=self.photoSign)
-                self.recordBtn.configure(image=self.recHand)
-                self.status.configure(text="Status: Gesture recognition mode")
+        # ----------- NETWORK ----------- #
+        self.setupNetwork()
 
-        def start_recording():
-            print("starting recording...")
-            speechListener.startListening()
-            self.status.configure(text="Status: Is recording")
+        # ----------- MODELS ----------- #
+        self.setupModels()
 
-        def stop_recording():
-            print("stopping recording...")
-            self.send_message(speechListener.getText())
-            speechListener.stopListening()
-            self.status.configure(text="Status: Stop recording")
+        # ----------- INTERFACE ----------- #
+        self.setupInterface()
 
-        def recordBtnAction(self):
-            if self.appMode == True:
-                self.is_recording = not self.is_recording
-                self.motion_recognizer.start_motion()
-                self.gesture_recognizer.flip_save_text_mode()
-                if self.is_recording == True:
-                    changeAppModeBtn.configure(state=tk.DISABLED)
-                else:
-                    changeAppModeBtn.configure(state=tk.NORMAL)
-                    self.gesture_recognizer.reset_text()
-                print("Tracking recognition")
-                self.status.configure(text="Status: Tracking recognition")
-            else:
-                if speechListener.getSpeechMode() == 0:
-                    start_recording()
-                    changeAppModeBtn.configure(state=tk.DISABLED)
-                else:
-                    stop_recording()
-                    changeAppModeBtn.configure(state=tk.NORMAL)
+        self.receive_message("This is where you will see your friend's messages!")
+        self.addToChat("This is where you will see your messages!")
 
-            self.actionButtonActive = not self.actionButtonActive
+        # Start capturing and displaying the camera feed
+        self.start_camera()
 
-            if self.actionButtonActive:
-                self.recordBtn.configure(fg_color="#729c59", hover_color="#5f8c50")
-            else:
-                self.recordBtn.configure(fg_color="#9c6359", hover_color="#8c5a50")
-
+    def setupNetwork(self):
         self.hostname = str(os.getenv("HOSTNAME"))
         self.port = int(os.getenv("PORT"))
 
@@ -117,8 +73,7 @@ class App(customtkinter.CTk):
         receiver_thread.daemon = True
         receiver_thread.start()
 
-        # ----------- MODELS ----------- #
-
+    def setupModels(self):
         self.cap = cv2.VideoCapture(0)
 
         # setup the gesture recognizer
@@ -154,6 +109,81 @@ class App(customtkinter.CTk):
         # Allow the thread to exit when the main program ends
         self.speech_thread.daemon = True
 
+    def setupInterface(self):
+        def changeMode():
+            """
+            Change the mode of the application (speech recognition or sign recognition).
+            param: None
+            return: None
+            """
+
+            # appMode = True -> speech recognition
+            # appMode = False -> sign recognition
+            if self.appMode == True:
+                self.event.clear()
+                self.speech_thread = self.create_thread()
+                # Allow the thread to exit when the main program ends
+                self.speech_thread.daemon = True
+                self.speech_thread.start()
+                self.appMode = False
+                changeAppModeBtn.configure(image=self.photoVoice)
+                self.recordBtn.configure(image=self.recVoice)
+                self.gesture_recognizer.flip_save_text_mode()
+                self.gesture_recognizer.reset_text()
+                self.status.configure(text="Status: Recording voice mode")
+            else:
+                if self.event.is_set() == False:
+                    self.event.set()
+                self.appMode = True
+                changeAppModeBtn.configure(image=self.photoSign)
+                self.recordBtn.configure(image=self.recHand)
+                self.gesture_recognizer.flip_save_text_mode()
+                self.status.configure(text="Status: Gesture recognition mode")
+
+        def start_recording():
+            print("starting recording...")
+            speechListener.startListening()
+            self.status.configure(text="Status: Is recording")
+
+        def stop_recording():
+            print("stopping recording...")
+            self.send_message(speechListener.getText())
+            speechListener.stopListening()
+            self.status.configure(text="Status: Stop recording")
+
+        def recordBtnAction(self):
+            """
+            Perform an action when the record button is clicked.
+            param: self - the current App object
+            return: None
+            """
+
+            if self.appMode == True:
+                self.is_recording = not self.is_recording
+                self.motion_recognizer.start_motion()
+                self.gesture_recognizer.flip_save_text_mode()
+                if self.is_recording == True:
+                    changeAppModeBtn.configure(state=tk.DISABLED)
+                else:
+                    changeAppModeBtn.configure(state=tk.NORMAL)
+                    self.gesture_recognizer.reset_text()
+                print("Tracking recognition")
+                self.status.configure(text="Status: Tracking recognition")
+            else:
+                if speechListener.getSpeechMode() == 0:
+                    start_recording()
+                    changeAppModeBtn.configure(state=tk.DISABLED)
+                else:
+                    stop_recording()
+                    changeAppModeBtn.configure(state=tk.NORMAL)
+
+            self.actionButtonActive = not self.actionButtonActive
+
+            if self.actionButtonActive:
+                self.recordBtn.configure(fg_color="#729c59", hover_color="#5f8c50")
+            else:
+                self.recordBtn.configure(fg_color="#9c6359", hover_color="#8c5a50")
+
         # Get screen width and height
         screen_width = self.winfo_screenwidth()
         screen_height = self.winfo_screenheight()
@@ -172,7 +202,7 @@ class App(customtkinter.CTk):
         self.grid_rowconfigure(0, weight=0)
         self.grid_rowconfigure(1, weight=1)
 
-        # ----------- CONTAINTER ----------- # -> TO CHECK: whether to leave it or just structure more the grid withoud using a container
+        # ----------- CONTAINTER ----------- #
 
         self.container = customtkinter.CTkFrame(self)
         self.container.grid(row=1, column=1, padx=20, pady=20, sticky="nsew")
@@ -226,7 +256,7 @@ class App(customtkinter.CTk):
         )
         self.header.grid(row=0, column=1, padx=20, pady=(20, 10), sticky="nw")
 
-        # ----------- CHAT ----------- # -> to do: fix the resize / the right message position / the scrolling
+        # ----------- CHAT ----------- #
 
         self.chatFrame = customtkinter.CTkFrame(self.container)
         self.chatFrame.grid(row=0, column=1, padx=20, pady=20, sticky="nsew")
@@ -289,8 +319,6 @@ class App(customtkinter.CTk):
 
         # ----------- CAMERA ----------- #
 
-        self.cap = cv2.VideoCapture(0)
-
         self.camera_canvas = tk.Canvas(
             self.container,
             width=600,
@@ -312,13 +340,13 @@ class App(customtkinter.CTk):
             pady=7,
         )
 
-        self.receive_message("This is where you will see your friend's messages!")
-        self.addToChat("This is where you will see your messages!")
-
-        # Start capturing and displaying the camera feed
-        self.start_camera()
-
     def receive_messages(self):
+        """
+        Receive messages from the server and display them on the chat.
+        param: None
+        return: None
+        """
+
         print("LISTENING:")
         while True:
             try:
@@ -335,6 +363,12 @@ class App(customtkinter.CTk):
                 break
 
     def send_message(self, message):
+        """
+        Send a message to the server.
+        param: message - the message to be sent
+        return: None
+        """
+
         if message:
             print("SENDING:", message)
             self.addToChat(message)
@@ -343,10 +377,20 @@ class App(customtkinter.CTk):
                 self.sender.send_message(message)
 
     def draw_landmarks(self, results, frame_rgb):
+        """
+        Draw landmarks on the camera feed.
+        param: results - the results of the hand tracking
+        param: frame_rgb - the camera feed
+        return: None
+        """
+
         # Draw text on the frame
         # cv2.putText(frame_rgb, f'Current word: {self.gesture_recognizer.get_current_text()}_', (80, 450), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
-        if results.multi_hand_landmarks:
+        # Draw landmarks on the frame
+        if (
+            results.multi_hand_landmarks and self.appMode == True
+        ):  # appMode = True -> sign recognition
             for hand_landmarks in results.multi_hand_landmarks:
                 self.mp_drawing.draw_landmarks(
                     frame_rgb,
@@ -360,33 +404,46 @@ class App(customtkinter.CTk):
                 # Track hand position
                 self.track_hand_position(hand_landmarks)
 
+            # Draw the current gesture and word on the frame
             self.GTT.configure(
                 text=f"Recognized: {self.gesture_recognizer.get_current_gesture()}"
                 + "\n\n"
                 + f"Current word: {self.gesture_recognizer.get_current_text()}_"
             )
+        elif self.appMode == False:  # appMode = False -> speech recognition
+            self.GTT.configure(text="Gesture recognition is not active")
         else:
+            # If no hands are detected, display "None" on the frame
             self.GTT.configure(
                 text=f"Recognized: None"
                 + "\n"
                 + f"Current word: {self.gesture_recognizer.get_current_text()}_"
             )
 
+        # Place the label on the frame
         self.GTT.place(x=250, y=590)
 
     def track_hand_position(self, hand_landmarks):
+        """
+        Track the position of the hand and perform actions based on its position.
+        param: hand_landmarks - the landmarks of the hand
+        return: None
+        """
+
+        # Define the positions of the areas on the screen
         top_left = (0.3, 0.3)
         top_center = (0.4, 0.3)
         top_right = (0.7, 0.2)
         bottom_right = (0.85, 0.85)
 
+        # Check if the hand is in the top left, top center, top right, or bottom right area
         if (
             hand_landmarks.landmark[8].x < top_left[0]
             and hand_landmarks.landmark[8].y < top_left[1]
             and self.gesture_recognizer.get_save_text_mode()
         ):
             print("TOP LEFT")
-            # accept the first suggestion
+            # accept the second suggestion
             if len(self.suggestions) > 1:
                 print("ADDING SUGGESTION: " + self.suggestions[1][0])
                 self.current_message = (
@@ -402,7 +459,7 @@ class App(customtkinter.CTk):
             and self.gesture_recognizer.get_save_text_mode()
         ):
             print("TOP CENTER")
-            # accept the second suggestion
+            # accept the first suggestion
             if len(self.suggestions) > 0:
                 self.current_message = (
                     self.current_message + self.suggestions[0][0] + " "
@@ -430,11 +487,24 @@ class App(customtkinter.CTk):
             and self.gesture_recognizer.get_save_text_mode()
         ):
             print("BOTTOM RIGHT")
+            # send the message
             if self.entry.get():
                 self.send_message(self.entry.get())
 
     def start_camera(self):
+        """
+        Start capturing and displaying the camera feed.
+        param: None
+        return: None
+        """
+
         def update_camera():
+            """
+            Update the camera feed.
+            param: None
+            return: None
+            """
+
             _, frame = self.cap.read()
             if frame is not None:
                 # Avoid mirroring the camera feed
@@ -485,7 +555,7 @@ class App(customtkinter.CTk):
 
                 self.draw_landmarks(results, frame_rgb)
 
-                # draw and fill a small orange rectangle on the bottom right corner of the camera canvas (with written "Send") (it should be inside the canvas)
+                # draw and fill a small orange rectangle on the bottom right corner of the camera canvas
                 cv2.rectangle(
                     frame_rgb,
                     (frame_rgb.shape[1] - 100, frame_rgb.shape[0] - 50),
@@ -506,10 +576,6 @@ class App(customtkinter.CTk):
 
                 # Calculate dimensions to fit the frame within the square canvas
                 canvas_size = self.camera_canvas.winfo_width()
-                frame_height, frame_width, _ = frame_rgb.shape
-                scale_factor = max(
-                    canvas_size / frame_width, canvas_size / frame_height
-                )
 
                 # Resize the frame to fill the square canvas
                 frame_resized = frame_rgb
@@ -531,9 +597,17 @@ class App(customtkinter.CTk):
         update_camera()
 
     def predictCompletion(self, substring, frame_rgb):
+        """
+        Predict the next word based on the current word.
+        param: substring - the current word
+        param: frame_rgb - the camera feed
+        return: None
+        """
+
         self.suggestions = []
 
         if len(substring) > 1:
+            # read the words from the csv file
             self.suggestions = [
                 word
                 for word in self.words
@@ -543,10 +617,9 @@ class App(customtkinter.CTk):
 
             if len(self.suggestions) > 0:
                 # first suggestion to the middle, second to the left and third one to the right
-                # draw and fill a small orange rectangle on the top left corner of the camera canvas of the size of the first suggestion
                 frame_x = frame_rgb.shape[1]
 
-                # draw and fill a small orange rectangle on the top center corner of the camera canvas of the size of the second suggestion
+                # draw and fill a small orange rectangle on the top center corner of the camera canvas of the size of the first suggestion
                 cv2.rectangle(
                     frame_rgb,
                     (frame_x // 2 - len(self.suggestions[0][0]) * 20 // 2, 23),
@@ -557,7 +630,7 @@ class App(customtkinter.CTk):
                     (255, 165, 0),
                     -1,
                 )
-                # write the second suggestion inside the second rectangle
+                # write the first suggestion inside the second rectangle
                 cv2.putText(
                     frame_rgb,
                     self.suggestions[0][0],
@@ -569,6 +642,7 @@ class App(customtkinter.CTk):
                 )
 
                 if len(self.suggestions) > 1:
+                    # draw and fill a small orange rectangle on the top left corner of the camera canvas of the size of the second suggestion
                     cv2.rectangle(
                         frame_rgb,
                         (40, 23),
@@ -576,7 +650,7 @@ class App(customtkinter.CTk):
                         (255, 165, 0),
                         -1,
                     )
-                    # write the first suggestion inside the first rectangle
+                    # write the second suggestion inside the first rectangle
                     cv2.putText(
                         frame_rgb,
                         self.suggestions[1][0],
@@ -620,6 +694,12 @@ class App(customtkinter.CTk):
         return self.event.is_set()
 
     def addToChat(self, textToAdd):
+        """
+        Add a message to the chat.
+        param: textToAdd - the message to be added
+        return: None
+        """
+
         textToAdd = textToAdd.lower()
 
         label = customtkinter.CTkLabel(
@@ -640,6 +720,12 @@ class App(customtkinter.CTk):
         self.chat.update()
 
     def receive_message(self, textReceived):
+        """
+        Receive a message from the server and add it to the chat.
+        param: textReceived - the message to be added
+        return: None
+        """
+
         label = customtkinter.CTkLabel(
             self.chat,
             wraplength=148,
@@ -668,11 +754,14 @@ class App(customtkinter.CTk):
 def writeToEntry(text):
     app.writeToInput(text)
 
+
 def deleteInput():
     app.removeInput()
 
+
 def sendToChat(text):
     app.addToChat(text)
+
 
 # Main logic for speech recognition
 def speech_recognition(event):
@@ -686,10 +775,11 @@ def speech_recognition(event):
 
     while True:
         stream.start_stream()
-        if app.shouldStopThread() == True:       #if we change modes - this will exit the loop and finish the process of this thread
+        if (
+            app.shouldStopThread() == True
+        ):  # if we change modes - this will exit the loop and finish the process of this thread
             break
         while speechListener.getSpeechMode() != 0:
-
             data = stream.read(4096)
 
             if recognizer.AcceptWaveform(data):
@@ -706,7 +796,9 @@ def speech_recognition(event):
                     if currentMode != 0:
                         if currentMode == 1:
                             if speechListener.getText() != "":
-                                speechListener.setMessage(speechListener.getText() + " ")
+                                speechListener.setMessage(
+                                    speechListener.getText() + " "
+                                )
                                 writeToEntry(" ")
                             speechListener.setMessage(speechListener.getText() + text)
                             writeToEntry(text)
@@ -714,11 +806,17 @@ def speech_recognition(event):
                             if "with" in text:
                                 wordInSentence = text.split("with", 1)[0].strip()
                                 replaceString = text.split("with", 1)[1].strip()
-                                speechListener.setMessage(speechListener.getText().replace(wordInSentence, replaceString))
+                                speechListener.setMessage(
+                                    speechListener.getText().replace(
+                                        wordInSentence, replaceString
+                                    )
+                                )
                                 deleteInput()
                                 writeToEntry(speechListener.getText())
                         elif currentMode == 3:
-                            speechListener.setMessage(speechListener.getText().replace(text, ""))
+                            speechListener.setMessage(
+                                speechListener.getText().replace(text, "")
+                            )
                             deleteInput()
                             writeToEntry(speechListener.getText())
 
@@ -738,7 +836,9 @@ if __name__ == "__main__":
             app.words.append(row)
 
         speechListener = SpeechListener()
-        model = Model("vosk-model-small-en-us-0.15") # getting model for the speech recognition
+        model = Model(
+            "vosk-model-small-en-us-0.15"
+        )  # getting model for the speech recognition
 
         recognizer = KaldiRecognizer(model, 16000)
 
