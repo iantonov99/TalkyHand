@@ -370,6 +370,7 @@ class App(customtkinter.CTk):
         """
 
         if message:
+            message = message.lower()
             print("SENDING:", message)
             self.addToChat(message)
             deleteInput()
@@ -699,8 +700,6 @@ class App(customtkinter.CTk):
         param: textToAdd - the message to be added
         return: None
         """
-
-        textToAdd = textToAdd.lower()
 
         label = customtkinter.CTkLabel(
             self.chat,
