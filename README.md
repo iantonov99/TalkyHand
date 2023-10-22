@@ -2,7 +2,7 @@
 
 This project focuses on developing an interactive system that recognizes hand gestures and translates them into American Sign Language (ASL) alphabet. It serves as both a sign language translator and an interactive prompter. The system incorporates features such as hand tracking, gesture recognition, motion recognition, and speech recognition, providing a comprehensive solution for communication. The user interface allows for dynamic interaction, with networking capabilities enabling communication between devices. Please refer to the setup guide for installation and usage instructions.
 
-More details are available in the [project report](deliverables/TalkyHand - Report.pdf).
+More details are available in the [project report](deliverables/TalkyHand%20-%20Report.pdf).
 
 ## Setup Guide
 
