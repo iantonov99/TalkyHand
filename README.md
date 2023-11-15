@@ -52,4 +52,4 @@ If the computers are on different networks, port forwarding is required.
 - **If Antonov**
     - GitHub: [iantonov99](https://github.com/iantonov99)
 - **Sibilla Silbano**
-    - GitHub: [sibillasilbano](https://github.com/allibiss)
+    - GitHub: [allibiss](https://github.com/allibiss)
